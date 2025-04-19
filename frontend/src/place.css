@@ -1,0 +1,4 @@
+.place-canvas {
+    -ms-interpolation-mode: nearest neighbour;
+    image-rendering: pixelated;
+}

@@ -1,0 +1,41 @@
+import { Identity } from "@clockworklabs/spacetimedb-sdk";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { DbConnection, ErrorContext } from "./spacetimedb";
+
+export const useSpacetimeDB = (props: { url: string }) => {
+    const [connected,setConnected] = useState<boolean>(false);
+    const [identity,setIdentity] = useState<Identity|null>(null);
+    const [conn,setConn] = useState<DbConnection|null>(null);
+
+    const onConnect = useCallback((conn: DbConnection,identity: Identity,token: string) => {
+        setIdentity(identity);
+        setConnected(true);
+        localStorage.setItem("authToken",token);
+        console.log("Connected to SpacetimeDB with identity ",identity.toHexString());
+        setConn(conn);
+    },[]);
+
+    const onDisconnect = useCallback(() => {
+        console.log('Disconnected from SpacetimeDB');
+        setConnected(false);
+    },[]);
+
+    const onConnectError = useCallback((_ctx: ErrorContext, err: Error) => {
+        console.log('Error connecting to SpacetimeDB:', err);
+    },[]);
+
+    useEffect(() => {
+        DbConnection.builder()
+        .withUri(props.url)
+        .withModuleName("place")
+        .withToken(localStorage.getItem("authToken") || "")
+        .onConnect(onConnect)
+        .onDisconnect(onDisconnect)
+        .onConnectError(onConnectError)
+        .build();
+    },[props.url,onConnect,onDisconnect,onConnectError]);
+
+    return useMemo(() => {
+        return { conn, identity, connected };
+    },[conn,identity,connected])
+}
