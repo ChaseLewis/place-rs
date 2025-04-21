@@ -30,32 +30,32 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
-export type Pixel = {
-  pixelId: number,
-  color: number,
+export type Player = {
+  identity: Identity,
+  energy: number,
 };
 
 /**
  * A namespace for generated helper functions.
  */
-export namespace Pixel {
+export namespace Player {
   /**
   * A function which returns this type represented as an AlgebraicType.
   * This function is derived from the AlgebraicType used to generate this type.
   */
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
-      new ProductTypeElement("pixelId", AlgebraicType.createU32Type()),
-      new ProductTypeElement("color", AlgebraicType.createU32Type()),
+      new ProductTypeElement("identity", AlgebraicType.createIdentityType()),
+      new ProductTypeElement("energy", AlgebraicType.createU32Type()),
     ]);
   }
 
-  export function serialize(writer: BinaryWriter, value: Pixel): void {
-    Pixel.getTypeScriptAlgebraicType().serialize(writer, value);
+  export function serialize(writer: BinaryWriter, value: Player): void {
+    Player.getTypeScriptAlgebraicType().serialize(writer, value);
   }
 
-  export function deserialize(reader: BinaryReader): Pixel {
-    return Pixel.getTypeScriptAlgebraicType().deserialize(reader);
+  export function deserialize(reader: BinaryReader): Player {
+    return Player.getTypeScriptAlgebraicType().deserialize(reader);
   }
 
 }

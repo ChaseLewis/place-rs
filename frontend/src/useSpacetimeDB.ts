@@ -37,5 +37,6 @@ export const useSpacetimeDB = (props: { url: string }) => {
 
     return useMemo(() => {
         return { conn, identity, connected };
+        
     },[conn,identity,connected])
 }

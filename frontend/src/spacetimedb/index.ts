@@ -40,19 +40,35 @@ import { UpdatePixelCoord } from "./update_pixel_coord_reducer.ts";
 export { UpdatePixelCoord };
 
 // Import and reexport all table handle types
+import { DisconnectedPlayersTableHandle } from "./disconnected_players_table.ts";
+export { DisconnectedPlayersTableHandle };
 import { PixelsTableHandle } from "./pixels_table.ts";
 export { PixelsTableHandle };
+import { PlayersTableHandle } from "./players_table.ts";
+export { PlayersTableHandle };
 
 // Import and reexport all types
 import { Pixel } from "./pixel_type.ts";
 export { Pixel };
+import { Player } from "./player_type.ts";
+export { Player };
 
 const REMOTE_MODULE = {
   tables: {
+    disconnected_players: {
+      tableName: "disconnected_players",
+      rowType: Player.getTypeScriptAlgebraicType(),
+      primaryKey: "identity",
+    },
     pixels: {
       tableName: "pixels",
       rowType: Pixel.getTypeScriptAlgebraicType(),
       primaryKey: "pixelId",
+    },
+    players: {
+      tableName: "players",
+      rowType: Player.getTypeScriptAlgebraicType(),
+      primaryKey: "identity",
     },
   },
   reducers: {
@@ -148,8 +164,16 @@ export class SetReducerFlags {
 export class RemoteTables {
   constructor(private connection: DbConnectionImpl) {}
 
+  get disconnectedPlayers(): DisconnectedPlayersTableHandle {
+    return new DisconnectedPlayersTableHandle(this.connection.clientCache.getOrCreateTable<Player>(REMOTE_MODULE.tables.disconnected_players));
+  }
+
   get pixels(): PixelsTableHandle {
     return new PixelsTableHandle(this.connection.clientCache.getOrCreateTable<Pixel>(REMOTE_MODULE.tables.pixels));
+  }
+
+  get players(): PlayersTableHandle {
+    return new PlayersTableHandle(this.connection.clientCache.getOrCreateTable<Player>(REMOTE_MODULE.tables.players));
   }
 }
 

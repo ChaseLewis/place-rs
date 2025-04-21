@@ -1,42 +1,39 @@
 mod tables;
 use spacetimedb::{ReducerContext, Table};
-use tables::{pixels, to_rgb, Pixel, PIXEL_HEIGHT, PIXEL_VERSION_COUNT, PIXEL_WIDTH};
+use tables::{disconnected_players, pixels, players, to_rgb, Pixel, Player, PIXEL_HEIGHT, PIXEL_WIDTH};
 
 #[spacetimedb::reducer(init)]
 pub fn init(ctx: &ReducerContext) {
 
-    if ctx.db.pixels().count() == 0 {
-
-        for y in 0..PIXEL_HEIGHT {
-            for x in 0..PIXEL_WIDTH {
-                ctx.db.pixels().insert(Pixel { 
-                    pixel_id: PIXEL_WIDTH*y + x, 
-                    version_id: 0, 
-                    pixel_x: x, 
-                    pixel_y: y, 
-                    color: to_rgb(0)
-                });
-            }
-        }
-    }
-    else
-    {
-        //If our pixels d exist then we need to find the previous max version id and 
-        let mut max_version_id = PIXEL_VERSION_COUNT.load(std::sync::atomic::Ordering::Relaxed);
-        for pixel in ctx.db.pixels().iter() {
-            max_version_id = max_version_id.max(pixel.version_id);
-        }
-        max_version_id += 1;
-        PIXEL_VERSION_COUNT.store(max_version_id, std::sync::atomic::Ordering::Relaxed);
+    let count = ctx.db.pixels().count() as u32;
+    let image_size = PIXEL_WIDTH*PIXEL_HEIGHT;
+    for idx in count..image_size {
+        ctx.db.pixels().insert(Pixel { 
+            pixel_id: idx,
+            color: to_rgb(0)
+        });
     }
 }
 
 #[spacetimedb::reducer(client_connected)]
-pub fn identity_connected(_ctx: &ReducerContext) {
-    // Called everytime a new client connects
+pub fn identity_connected(ctx: &ReducerContext) {
+
+    if let Some(player) = ctx.db.disconnected_players().identity().find(ctx.sender) {
+        ctx.db.players().insert(player);
+        ctx.db.disconnected_players().identity().delete(ctx.sender);
+    }
+    else {
+        ctx.db.players().insert(Player {
+            identity: ctx.sender,
+            energy: 0
+        });
+    }
 }
 
 #[spacetimedb::reducer(client_disconnected)]
-pub fn identity_disconnected(_ctx: &ReducerContext) {
-    // Called everytime a client disconnects
+pub fn identity_disconnected(ctx: &ReducerContext) {
+    if let Some(player) = ctx.db.players().identity().find(ctx.sender) {
+        ctx.db.disconnected_players().insert(player);
+        ctx.db.players().identity().delete(ctx.sender);
+    }
 }
