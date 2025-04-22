@@ -25,7 +25,10 @@ pub fn identity_connected(ctx: &ReducerContext) {
     else {
         ctx.db.players().insert(Player {
             identity: ctx.sender,
-            energy: 0
+            next_action: ctx.timestamp
+            //We don't want new players to get an immediate action otherwise best strat is just
+            //spawn a bunch of new players
+            //next_action: ctx.timestamp.checked_add_duration(Duration::from_secs(60)).unwrap()
         });
     }
 }

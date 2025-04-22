@@ -374,6 +374,9 @@ var ConnectionId = class _ConnectionId {
   isEqual(other) {
     return this.data == other.data;
   }
+  toPrimaryKey() {
+    return this.data;
+  }
   /**
    * Print the connection ID as a hexadecimal string.
    */
@@ -491,6 +494,9 @@ var Identity = class _Identity {
    */
   toHexString() {
     return u256ToHexString(this.data);
+  }
+  toPrimaryKey() {
+    return this.toHexString();
   }
   /**
    * Convert the address to a Uint8Array.
@@ -2066,68 +2072,6 @@ var EventEmitter = class {
   }
 };
 
-// src/operations_map.ts
-// var OperationsMap = class {
-//   #items = new Map();
-//   #isEqual(a, b) {
-//     if (a && typeof a === "object" && "isEqual" in a) {
-//       return a.isEqual(b);
-//     }
-//     return a === b;
-//   }
-//   set(key, value) {
-//     this.#items.set(key,value);
-//     // const existingIndex = this.#items.findIndex(
-//     //   ({ key: k }) => this.#isEqual(k, key)
-//     // );
-//     // this.#items[key] = value;
-//     // if (existingIndex > -1) {
-//     //   this.#items[existingIndex].value = value;
-//     // } else {
-//     //   this.#items.push({ key, value });
-//     // }
-//   }
-//   get(key) {
-//     return this.#items.get(key);
-//     // const item = this.#items.find(({ key: k }) => this.#isEqual(k, key));
-//     // return item ? item.value : void 0;
-//   }
-//   delete(key) {
-//     this.#items.delete(key);
-//     // const existingIndex = this.#items.findIndex(
-//     //   ({ key: k }) => this.#isEqual(k, key)
-//     // );
-//     // if (existingIndex > -1) {
-//     //   this.#items.splice(existingIndex, 1);
-//     //   return true;
-//     // }
-//     // return false;
-//   }
-//   has(key) {
-//     return this.#items.has(key); //.some(({ key: k }) => this.#isEqual(k, key));
-//   }
-//   values() {
-//     return this.#items.values();
-//   }
-//   entries() {
-//     return this.#items.entries();
-//   }
-
-//   [Symbol.iterator]() {
-//     return this.#items.entries();
-//     // return {
-//     //   next() {
-//     //     return items.next();
-//     //     if (index < items.length) {
-//     //       return { value: items[index++], done: false };
-//     //     } else {
-//     //       return { value: null, done: true };
-//     //     }
-//     //   }
-//     // };
-//   }
-// };
-
 // src/logger.ts
 var LogLevelIdentifierIcon = {
   component: "\u{1F4E6}",
@@ -2189,24 +2133,26 @@ var TableCache33 = class {
   applyOperations = (operations, ctx) => {
     const pendingCallbacks = [];
     if (this.tableTypeInfo.primaryKey !== void 0) {
+      let hasDelete = false;
       const primaryKey = this.tableTypeInfo.primaryKey;
-      const insertMap = new Map();
-      const deleteMap = new Map();
-      let hasDelete = true;
+      const insertMap = /* @__PURE__ */ new Map();
+      const deleteMap = /* @__PURE__ */ new Map();
       for (const op of operations) {
+        let key = op.row[primaryKey];
+        if (typeof key === "object" && "toPrimaryKey" in key) {
+          key = key.toPrimaryKey();
+        }
         if (op.type === "insert") {
-          const [_, prevCount] = insertMap.get(op.row[primaryKey]) || [op, 0];
-          insertMap.set(op.row[primaryKey], [op, prevCount + 1]);
+          const [_, prevCount] = insertMap.get(key) || [op, 0];
+          insertMap.set(key, [op, prevCount + 1]);
         } else {
-          hasDelete |= true;
-          const [_, prevCount] = deleteMap.get(op.row[primaryKey]) || [op, 0];
-          deleteMap.set(op.row[primaryKey], [op, prevCount + 1]);
+          hasDelete = true;
+          const [_, prevCount] = deleteMap.get(key) || [op, 0];
+          deleteMap.set(key, [op, prevCount + 1]);
         }
       }
-
-      if(hasDelete)
-      {
-        for (const [primaryKey2,[insertOp,refCount]] of insertMap.entries()) {
+      if (hasDelete) {
+        for (const [primaryKey2, [insertOp, refCount]] of insertMap.entries()) {
           const deleteEntry = deleteMap.get(primaryKey2);
           if (deleteEntry) {
             const [deleteOp, deleteCount] = deleteEntry;
@@ -2223,19 +2169,16 @@ var TableCache33 = class {
             }
           }
         }
-
         for (const [deleteOp, refCount] of deleteMap.values()) {
           const maybeCb = this.delete(ctx, deleteOp, refCount);
           if (maybeCb) {
             pendingCallbacks.push(maybeCb);
           }
         }
-      }
-      else
-      {
+      } else {
         for (const [insertOp, refCount] of insertMap.values()) {
           const maybeCb = this.insert(ctx, insertOp, refCount);
-          if(maybeCb) {
+          if (maybeCb) {
             pendingCallbacks.push(maybeCb);
           }
         }
@@ -2429,10 +2372,12 @@ var ClientCache = class {
     return table;
   }
   getOrCreateTable(tableTypeInfo) {
-    let table = this.tables.get(tableTypeInfo.tableName)
-    if(!table) {
+    let table;
+    if (!this.tables.has(tableTypeInfo.tableName)) {
       table = new TableCache33(tableTypeInfo);
       this.tables.set(tableTypeInfo.tableName, table);
+    } else {
+      table = this.tables.get(tableTypeInfo.tableName);
     }
     return table;
   }
@@ -3290,8 +3235,9 @@ var DbConnectionImpl32 = class {
       const tableName = tableUpdate.tableName;
       const tableTypeInfo = this.#remoteModule.tables[tableName];
       const table = this.clientCache.getOrCreateTable(tableTypeInfo);
-      const callbacks = table.applyOperations(tableUpdate.operations, eventContext);
-      pendingCallbacks = pendingCallbacks.concat(callbacks);
+      pendingCallbacks = pendingCallbacks.concat(
+        table.applyOperations(tableUpdate.operations, eventContext)
+      );
     }
     return pendingCallbacks;
   }
@@ -3314,7 +3260,7 @@ var DbConnectionImpl32 = class {
           eventContext
         );
         if (this.#emitter) {
-          this.#onApplied?.(subscriptionEventContext,message.tableUpdates);
+          this.#onApplied?.(subscriptionEventContext);
         }
         for (const callback of callbacks) {
           callback.cb();

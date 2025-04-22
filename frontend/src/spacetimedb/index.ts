@@ -29,7 +29,7 @@ import {
   TimeDuration,
   Timestamp,
   deepEqual,
-} from "@clockworklabs/spacetimedb-sdk";
+} from "../test-sdk";
 
 // Import and reexport all reducer arg types
 import { IdentityConnected } from "./identity_connected_reducer.ts";

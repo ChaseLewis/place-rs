@@ -29,10 +29,10 @@ import {
   TimeDuration,
   Timestamp,
   deepEqual,
-} from "@clockworklabs/spacetimedb-sdk";
+} from "../test-sdk";
 export type Player = {
   identity: Identity,
-  energy: number,
+  nextAction: Timestamp,
 };
 
 /**
@@ -46,7 +46,7 @@ export namespace Player {
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
       new ProductTypeElement("identity", AlgebraicType.createIdentityType()),
-      new ProductTypeElement("energy", AlgebraicType.createU32Type()),
+      new ProductTypeElement("nextAction", AlgebraicType.createTimestampType()),
     ]);
   }
 

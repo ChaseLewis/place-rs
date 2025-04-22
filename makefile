@@ -4,6 +4,9 @@ init:
 spacetimedb-start:
 	spacetime start --listen-addr 0.0.0.0:3001
 
+spacetimedb-logs:
+	spacetime logs place --server http://0.0.0.0:3001
+
 spacetimedb-publish:
 	spacetime publish -p ./server place --server http://0.0.0.0:3001 -y
 

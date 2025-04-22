@@ -29,7 +29,7 @@ import {
   TimeDuration,
   Timestamp,
   deepEqual,
-} from "@clockworklabs/spacetimedb-sdk";
+} from "../test-sdk";
 
 export type UpdatePixelCoord = {
   pixelId: number,

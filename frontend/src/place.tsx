@@ -1,10 +1,14 @@
 import { Flex } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSpacetimeDB } from './useSpacetimeDB';
-import { EventContext, Pixel } from './spacetimedb';
+import { EventContext, Pixel, Player } from './spacetimedb';
 import { useAnimationFrame } from 'motion/react';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from './util/chunks';
+import { MouseInfo, MouseInfoRef } from './components/mouseInfo';
+import { usePlaceStore } from './store/usePlaceStore';
+import dayjs from 'dayjs';
+import { TileBar } from './components/tileBar';
 
 export interface PixelRef {
     color: ImageData,
@@ -20,17 +24,13 @@ const useRefInit = function<T>(init: () => T) {
     return ref;
 }
 
-// const invokeChunkManagerOnContainer = (container: HTMLDivElement,chunkManager: ChunkManager, conn: DbConnection,pixelScale: number) => {
-//     const rect = container.getBoundingClientRect();
-//     const viewRect: [number,number,number,number] = [container.scrollLeft,container.scrollLeft+rect.width,container.scrollTop,container.scrollTop+rect.height];
-//     chunkManager.computeChunks(conn,viewRect,pixelScale);
-// }
-
 export const PlaceImage = (props: {
     url: string, pixelScale: number, style?: React.CSSProperties
 }) => { 
     
     const [loading,setLoading] = useState(true);
+    const placeStore = usePlaceStore();
+    const mouseInfoRef = useRef<MouseInfoRef>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const spacetimeDb = useSpacetimeDB({ url: props.url });
@@ -53,15 +53,31 @@ export const PlaceImage = (props: {
             return;
         }
 
+        spacetimeDb.conn.db.players.onInsert((_ctx,row: Player) => {
+            placeStore.setNextRestoreTimestamp(dayjs(row.nextAction.toDate()));
+        });
+
+        spacetimeDb.conn.db.players.onUpdate((_ctx,_oldRow: Player,newRow: Player) => {
+            placeStore.setNextRestoreTimestamp(dayjs(newRow.nextAction.toDate()));    
+        });
+
         spacetimeDb.conn.db.pixels.onUpdate((_ctx: EventContext, _oldRow: Pixel, newRow: Pixel) => {
             if(refPixelData.current) {
                 refPixelData.current?.colorDataView.setUint32(4*newRow.pixelId,newRow.color);
                 refPixelData.current.dirty = true;
             }
         });
+        const playerSub = spacetimeDb.conn.subscriptionBuilder()
+        .onApplied(() => {}) 
+        .onError((ex: any) => {
+            console.error(ex);
+            console.error("Failed to subscribe to players table");
+        })
+        .subscribe("SELECT * FROM players");
+
 
         const startTime = performance.now();
-        const subscription = spacetimeDb.conn.subscriptionBuilder()
+        const pixelSub = spacetimeDb.conn.subscriptionBuilder()
         .onApplied((ctx) => {
 
             const current = performance.now();
@@ -81,7 +97,10 @@ export const PlaceImage = (props: {
         })
         .subscribe("SELECT * FROM pixels");
 
-        return () => { subscription.unsubscribe() };
+        return () => { 
+            playerSub.unsubscribe();
+            pixelSub.unsubscribe() 
+        };
     },[spacetimeDb.conn]);
 
     useAnimationFrame(() => {
@@ -121,32 +140,27 @@ export const PlaceImage = (props: {
         
     },[props.pixelScale,loading]);
 
-    // const handleScroll = useMemo(() => {
-    //     if(!spacetimeDb.conn) {
-    //         return undefined;
-    //     }
+    const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        mouseInfoRef.current?.setMousePosition(e.clientX,e.clientY);
+    },[]);
 
-    //     return debounce((scroll: React.MouseEvent<HTMLDivElement>) => {
-    //         if(!spacetimeDb.conn) {
-    //             return;
-    //         }
-
-    //         const target = (scroll.target as HTMLDivElement);
-    //         const rect = target.getBoundingClientRect();
-    //         const viewRect: [number,number,number,number] = [target.scrollLeft,target.scrollLeft+rect.width,target.scrollTop,target.scrollTop+rect.height];
-    //         chunkRef.current?.computeChunks(spacetimeDb.conn,viewRect,props.pixelScale)
-    //     },150,{ trailing: true });
-
-    // },[spacetimeDb.conn,props.pixelScale]);
+    const handleScroll = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        const element = (e.target as HTMLDivElement);
+        mouseInfoRef.current?.setScrollPosition(element.scrollLeft,element.scrollTop);
+    },[]);
 
     return (
         <div
             ref={containerRef}
             className="place-image-container"
+            onMouseMove={handleMouseMove}
+            onScroll={handleScroll}
         >
             {loading && (<Flex justify='center' align='center' style={{ width: "100%", height: "100%", background: "#333333"}}>
-                <LoadingOutlined size={50} style={{ fontSize: "4em", color: "#1372ed" }}/>
+                <LoadingOutlined style={{ fontSize: "4em", color: "#1372ed" }}/>
             </Flex>)}
+            <TileBar />
+            <MouseInfo ref={mouseInfoRef} hide={loading} pixelScale={props.pixelScale}/>
             <canvas
                 className="place-image" 
                 ref={canvasRef} 

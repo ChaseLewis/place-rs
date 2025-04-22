@@ -15,6 +15,7 @@ declare class ConnectionId {
      * Compare two connection IDs for equality.
      */
     isEqual(other: ConnectionId): boolean;
+    toPrimaryKey(): bigint;
     /**
      * Print the connection ID as a hexadecimal string.
      */
@@ -284,6 +285,7 @@ declare class Identity {
      * Print the identity as a hexadecimal string.
      */
     toHexString(): string;
+    toPrimaryKey(): string;
     /**
      * Convert the address to a Uint8Array.
      */
@@ -820,7 +822,7 @@ declare class SubscriptionBuilderImpl<DBView = any, Reducers = any, SetReducerFl
      * @param cb - Callback to run when the subscription is applied.
      * @returns The current `SubscriptionBuilder` instance.
      */
-    onApplied(cb: (ctx: SubscriptionEventContextInterface<DBView, Reducers, SetReducerFlags>,rows: any) => void): SubscriptionBuilderImpl<DBView, Reducers, SetReducerFlags>;
+    onApplied(cb: (ctx: SubscriptionEventContextInterface<DBView, Reducers, SetReducerFlags>) => void): SubscriptionBuilderImpl<DBView, Reducers, SetReducerFlags>;
     /**
      * Registers `callback` to run when this query either:
      * - Fails to be added to our subscribed set.

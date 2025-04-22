@@ -1,0 +1,14 @@
+.mouse-position-info {
+    position: fixed;
+    top: 5vh;
+    left: 50vw;
+    width: min(10vw,150px);
+    transform: translate(-50%,0px);
+
+    background: white;
+    text-align: center; 
+    padding: 5px 25px;
+    border-radius: 50px; 
+
+    font-size: 1.2em;
+}

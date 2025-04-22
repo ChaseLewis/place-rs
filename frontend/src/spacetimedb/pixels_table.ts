@@ -29,7 +29,7 @@ import {
   TimeDuration,
   Timestamp,
   deepEqual,
-} from "@clockworklabs/spacetimedb-sdk";
+} from "../test-sdk";
 import { Pixel } from "./pixel_type";
 import { EventContext, Reducer, RemoteReducers, RemoteTables } from ".";
 
