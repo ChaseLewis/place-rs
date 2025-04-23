@@ -9,7 +9,7 @@ import { MouseInfo, MouseInfoRef } from './components/mouseInfo';
 import { usePlaceStore } from './store/usePlaceStore';
 import dayjs from 'dayjs';
 import { TileBar } from './components/tileBar';
-
+import useMouse from '@react-hook/mouse-position';
 export interface PixelRef {
     color: ImageData,
     colorDataView: DataView,
@@ -25,7 +25,10 @@ const useRefInit = function<T>(init: () => T) {
 }
 
 export const PlaceImage = (props: {
-    url: string, pixelScale: number, style?: React.CSSProperties
+    url: string, 
+    pixelScale: number, 
+    setPixelScale?: (scale: number) => void;
+    style?: React.CSSProperties
 }) => { 
     
     const [loading,setLoading] = useState(true);
@@ -33,6 +36,9 @@ export const PlaceImage = (props: {
     const mouseInfoRef = useRef<MouseInfoRef>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    mouseInfoRef.current?.setCanvasRef(canvasRef.current);
+    mouseInfoRef.current?.setContainerRef(containerRef.current);
+
     const spacetimeDb = useSpacetimeDB({ url: props.url });
     const refPixelData = useRefInit<PixelRef>(() => {
         const colorBuffer = new ImageData(CANVAS_WIDTH,CANVAS_HEIGHT);
@@ -44,6 +50,7 @@ export const PlaceImage = (props: {
     });
 
     useEffect(() => {
+        //Don't want to accidentally navigate away
         window.onbeforeunload = () => { return true; }
         return () => { window.onbeforeunload = null };
     },[]);
@@ -79,12 +86,11 @@ export const PlaceImage = (props: {
         const startTime = performance.now();
         const pixelSub = spacetimeDb.conn.subscriptionBuilder()
         .onApplied((ctx) => {
-
             const current = performance.now();
             console.log("Pixel subscription ",current-startTime,"ms");
             if(refPixelData.current)
             {
-                for(const pixel of ctx.db.pixels.iter()) {
+                for(const pixel of ctx.db.pixels.iter()) { 
                     refPixelData.current?.colorDataView.setUint32(4*pixel.pixelId,pixel.color); 
                 }
                 refPixelData.current.dirty = true;
@@ -118,57 +124,70 @@ export const PlaceImage = (props: {
     });
 
     const placePixel = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-        if(!spacetimeDb.conn || !spacetimeDb.connected || !containerRef.current) {
+        if(!spacetimeDb.conn || !spacetimeDb.connected || !containerRef.current || !mouseInfoRef.current) {
             console.log({ spacetimeDb });
             return;
         }
 
-        const pixelX = Math.floor((containerRef.current.scrollLeft + e.clientX)/props.pixelScale);
-        const pixelY = Math.floor((containerRef.current.scrollTop + e.clientY)/props.pixelScale);
-        const pixelId = pixelY*CANVAS_WIDTH + pixelX;
-        spacetimeDb.conn.reducers.updatePixelCoord(pixelId,0xFFA500FF);
+        if(!dayjs().isAfter(placeStore.nextRestoreTimestamp)) {
+            console.log("Still on cooldown!");
+            return;
+        }
 
-    },[props.pixelScale,spacetimeDb.conn,spacetimeDb.connected]);
+        //Convert the hex string to a proper color
+        //for some reason things are kept in little-endian?
+        const trimmedNumber = placeStore.color.replace("#","");
+        const r = trimmedNumber.substring(0,2);
+        const g = trimmedNumber.substring(2,4);
+        const b = trimmedNumber.substring(4,6);
+        const colorNumber = parseInt(r,16) << 24 | parseInt(g,16) << 16 | parseInt(b,16) << 8 | 0xFF;
+
+        const position = mouseInfoRef.current.canvasPosition();
+        const pixelX = position[0];
+        const pixelY = position[1];
+        const pixelId = pixelY*CANVAS_WIDTH + pixelX;
+        spacetimeDb.conn.reducers.updatePixelCoord(pixelId,colorNumber);
+
+    },[placeStore.color,placeStore.nextRestoreTimestamp,props.pixelScale,spacetimeDb.conn,spacetimeDb.connected]);
 
     const style = useMemo(() => {
         return { 
             width: `${props.pixelScale*CANVAS_WIDTH}px`, 
             height: `${props.pixelScale*CANVAS_HEIGHT}px`,
             imageRendering: "pixelated",
+            margin: "100px",
             display: loading ? "none" : undefined
         } as React.CSSProperties;
         
     },[props.pixelScale,loading]);
 
-    const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-        mouseInfoRef.current?.setMousePosition(e.clientX,e.clientY);
-    },[]);
-
-    const handleScroll = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-        const element = (e.target as HTMLDivElement);
-        mouseInfoRef.current?.setScrollPosition(element.scrollLeft,element.scrollTop);
-    },[]);
-
     return (
-        <div
+        <div className="app-container"
             ref={containerRef}
-            className="place-image-container"
-            onMouseMove={handleMouseMove}
-            onScroll={handleScroll}
+            onMouseMove={mouseInfoRef.current?.onMouseMove}
         >
-            {loading && (<Flex justify='center' align='center' style={{ width: "100%", height: "100%", background: "#333333"}}>
-                <LoadingOutlined style={{ fontSize: "4em", color: "#1372ed" }}/>
-            </Flex>)}
-            <TileBar />
-            <MouseInfo ref={mouseInfoRef} hide={loading} pixelScale={props.pixelScale}/>
-            <canvas
-                className="place-image" 
-                ref={canvasRef} 
-                width={CANVAS_WIDTH} 
-                height={CANVAS_HEIGHT}
-                onClick={placePixel}
-                style={style}
-            />
-        </div>
+            <div
+                className="place-image-container"
+            >
+                {loading && (<Flex justify='center' align='center' style={{ width: "100vw", height: "100vh", background: "#333333"}}>
+                    <LoadingOutlined style={{ fontSize: "4em", color: "#1372ed" }}/>
+                </Flex>)}
+                <TileBar hide={loading} />
+                <MouseInfo 
+                    ref={mouseInfoRef} 
+                    hide={loading} 
+                    pixelScale={props.pixelScale} 
+                    setPixelScale={props.setPixelScale}
+                />
+                <canvas
+                    ref={canvasRef} 
+                    className="place-image" 
+                    width={CANVAS_WIDTH} 
+                    height={CANVAS_HEIGHT}
+                    onClick={placePixel}
+                    style={style}
+                />
+            </div>
+    </div>
     );
 }

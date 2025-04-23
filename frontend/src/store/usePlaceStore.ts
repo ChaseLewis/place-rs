@@ -9,8 +9,11 @@ export interface PlaceStore {
 }
 
 export const usePlaceStore = create<PlaceStore>((set) => ({
-    color: "#FFFFFF",
+    color: localStorage.getItem("selectedColor") || "#FFFFFF",
     nextRestoreTimestamp: null,
-    setColor: (color: string) => { set((state) => ({ ...state, color })); },
+    setColor: (color: string) => { 
+        localStorage.setItem("selectedColor",color);
+        set((state) => ({ ...state, color })); 
+    },
     setNextRestoreTimestamp: (nextRestoreTimestamp: Dayjs|null) => { set((state) => ({ ...state, nextRestoreTimestamp }))}
 }));

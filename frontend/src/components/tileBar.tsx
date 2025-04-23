@@ -1,8 +1,10 @@
-import { useAnimationFrame } from "motion/react";
-import { usePlaceStore } from "../store/usePlaceStore"
-import { useRef, useState } from "react";
-import dayjs, { Dayjs } from "dayjs";
 import './tileBar.css';
+import dayjs, { Dayjs } from "dayjs";
+import { useRef, useState } from "react";
+import { Button, ColorPicker, Flex } from "antd";
+import { useAnimationFrame } from "motion/react";
+import { usePlaceStore } from "../store/usePlaceStore";
+import { ColorFormatType } from "antd/es/color-picker/interface";
 
 interface TileBarStateRef {
     complete: boolean,
@@ -10,13 +12,13 @@ interface TileBarStateRef {
 }
 
 
-export const TileBar = () => {
+export const TileBar = (props: { hide: boolean }) => {
 
     const placeStore = usePlaceStore();
     const [active,setActive] = useState(false);
-    const [displayText,setDisplayText] = useState("");
     const dateRef = useRef<TileBarStateRef>(null);
-
+    const [displayText,setDisplayText] = useState("");
+    const [colorFormat,setColorFormat] = useState<ColorFormatType|undefined>("rgb");
     if(dateRef.current === null) {
         dateRef.current = { nextRestoreTimestamp: placeStore.nextRestoreTimestamp, complete: false };
     }
@@ -44,9 +46,9 @@ export const TileBar = () => {
                 dateRef.current.complete = false;
             }
 
-            let diff = timestamp.diff(now,"seconds");
-            let minutes = Math.floor((diff / 60));
-            let seconds = Math.ceil(diff - minutes*60);
+            let diff = timestamp.diff(now,"milliseconds");
+            let minutes = Math.floor(diff / 60000);
+            let seconds = Math.ceil((diff - minutes*60000)/1000);
             const text = minutes.toString().padStart(2,"0") + ":" + seconds.toString().padStart(2,"0");
             setDisplayText((old) => {
                 return old === text ? old : text;
@@ -54,14 +56,30 @@ export const TileBar = () => {
         }
     });
 
-    if(!placeStore.nextRestoreTimestamp) {
+    if(!placeStore.nextRestoreTimestamp || props.hide) {
         return null;
     }
 
     return (
-        <div className="tile-bar">
-            {active ? "Place a tile" : null}
-            {!active ? displayText : null }
-        </div>
+        <Flex gap="4px" className="tile-bar">
+            <div className="color-picker-section">
+                <Button type="text" style={{ "padding": "0px" }}><img src="/eyedropper.svg" alt="eye dropper" width="25px" /></Button>
+            </div>
+            <div className="color-section">
+                <ColorPicker
+                    disabledAlpha
+                    format={colorFormat}
+                    onFormatChange={setColorFormat} 
+                    value={placeStore.color} 
+                    onChange={(val) => {
+                        placeStore.setColor(val.toHexString());
+                    }} 
+                />
+            </div>
+            <Flex flex={1} align="center" justify="center" style={{ fontFamily: "monospace" }}>
+                {active ? "Place a tile" : null}
+                {!active ? displayText : null }
+            </Flex>
+        </Flex>
     );
 }

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DbConnection, ErrorContext } from "./spacetimedb";
 
 export const useSpacetimeDB = (props: { url: string }) => {
+    
     const [connected,setConnected] = useState<boolean>(false);
     const [identity,setIdentity] = useState<Identity|null>(null);
     const [conn,setConn] = useState<DbConnection|null>(null);
@@ -21,7 +22,7 @@ export const useSpacetimeDB = (props: { url: string }) => {
     },[]);
 
     const onConnectError = useCallback((_ctx: ErrorContext, err: Error) => {
-        console.log('Error connecting to SpacetimeDB:', err);
+        console.error("Failed to connect to SpacetimeDB: ",err);
     },[]);
 
     useEffect(() => {

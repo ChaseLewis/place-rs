@@ -2134,21 +2134,16 @@ var TableCache33 = class {
     const pendingCallbacks = [];
     if (this.tableTypeInfo.primaryKey !== void 0) {
       let hasDelete = false;
-      const primaryKey = this.tableTypeInfo.primaryKey;
       const insertMap = /* @__PURE__ */ new Map();
       const deleteMap = /* @__PURE__ */ new Map();
       for (const op of operations) {
-        let key = op.row[primaryKey];
-        if (typeof key === "object" && "toPrimaryKey" in key) {
-          key = key.toPrimaryKey();
-        }
         if (op.type === "insert") {
-          const [_, prevCount] = insertMap.get(key) || [op, 0];
-          insertMap.set(key, [op, prevCount + 1]);
+          const [_, prevCount] = insertMap.get(op.rowId) || [op, 0];
+          insertMap.set(op.rowId, [op, prevCount + 1]);
         } else {
           hasDelete = true;
-          const [_, prevCount] = deleteMap.get(key) || [op, 0];
-          deleteMap.set(key, [op, prevCount + 1]);
+          const [_, prevCount] = deleteMap.get(op.rowId) || [op, 0];
+          deleteMap.set(op.rowId, [op, prevCount + 1]);
         }
       }
       if (hasDelete) {
@@ -3053,12 +3048,21 @@ var DbConnectionImpl32 = class {
       const reader = new BinaryReader(buffer);
       const rows = [];
       const rowType = this.#remoteModule.tables[tableName].rowType;
+      const primaryKey = this.#remoteModule.tables[tableName].primaryKey;
       while (reader.offset < buffer.length + buffer.byteOffset) {
         const row = rowType.deserialize(reader);
-        const rowId = JSON.stringify(
-          row,
-          (_, v) => typeof v === "bigint" ? v.toString() : v
-        );
+        let rowId;
+        if (primaryKey !== void 0) {
+          rowId = row[primaryKey];
+          if (typeof rowId === "object" && "toPrimaryKey" in rowId) {
+            rowId = rowId.toPrimaryKey();
+          }
+        } else {
+          rowId = JSON.stringify(
+            row,
+            (_, v) => typeof v === "bigint" ? v.toString() : v
+          );
+        }
         rows.push({
           type,
           rowId,

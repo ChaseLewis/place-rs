@@ -2,7 +2,7 @@
     position: fixed;
     top: 5vh;
     left: 50vw;
-    width: min(10vw,150px);
+    width: 200px;
     transform: translate(-50%,0px);
 
     background: white;
@@ -11,4 +11,7 @@
     border-radius: 50px; 
 
     font-size: 1.2em;
+    font-family: monospace;
+
+    box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
 }
