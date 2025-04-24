@@ -22,9 +22,7 @@ export const TileBar = (props: { hide: boolean }) => {
     if(dateRef.current === null) {
         dateRef.current = { nextRestoreTimestamp: placeStore.nextRestoreTimestamp, complete: false };
     }
-    dateRef.current.nextRestoreTimestamp = placeStore.nextRestoreTimestamp;;
-
-
+    dateRef.current.nextRestoreTimestamp = placeStore.nextRestoreTimestamp;
     useAnimationFrame(() => {
         if(!dateRef.current?.nextRestoreTimestamp) {
             return;
@@ -61,19 +59,37 @@ export const TileBar = (props: { hide: boolean }) => {
     }
 
     return (
-        <Flex gap="4px" className="tile-bar">
+        <Flex gap="4px" className="tile-bar"
+            onClick={((e) => {
+                e.stopPropagation();
+                return false;
+            })}
+        >   
             <div className="color-picker-section">
-                <Button type="text" style={{ "padding": "0px" }}><img src="/eyedropper.svg" alt="eye dropper" width="25px" /></Button>
+                <Button type="text" style={{ "padding": "0px 4px", background: placeStore.clickMode === "EyeDropper" ? "rgba(0,0,0,0.08)" : undefined }} onClick={() => {
+                    placeStore.setClickMode(placeStore.clickMode === "EyeDropper" ? "Pixel" : "EyeDropper");
+                }}>
+                    <img src="/eyedropper.svg" alt="eye dropper" width="25px" />
+                </Button>
             </div>
             <div className="color-section">
                 <ColorPicker
                     disabledAlpha
                     format={colorFormat}
                     onFormatChange={setColorFormat} 
-                    value={placeStore.color} 
-                    onChange={(val) => {
+                    value={placeStore.clickMode === "Pixel" ? placeStore.color : placeStore.eyeDropColor} 
+                    onChangeComplete={(val) => {
                         placeStore.setColor(val.toHexString());
                     }} 
+                    onOpenChange={(open) => {
+                        //We need to set 'open' or 'close' on the store to prevent the mouse move
+                        //from exploding everything while dragging on the color.
+                        placeStore.setColorPickerOpen(open);
+
+                        if(open && placeStore.clickMode === "EyeDropper") {
+                            placeStore.setClickMode("Pixel");
+                        } 
+                    }}
                 />
             </div>
             <Flex flex={1} align="center" justify="center" style={{ fontFamily: "monospace" }}>

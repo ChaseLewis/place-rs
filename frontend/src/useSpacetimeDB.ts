@@ -2,11 +2,14 @@ import { Identity } from "@clockworklabs/spacetimedb-sdk";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DbConnection, ErrorContext } from "./spacetimedb";
 
+let SPACETIME_DB_CONNECTION: DbConnection|null = null;
+
 export const useSpacetimeDB = (props: { url: string }) => {
-    
-    const [connected,setConnected] = useState<boolean>(false);
-    const [identity,setIdentity] = useState<Identity|null>(null);
-    const [conn,setConn] = useState<DbConnection|null>(null);
+
+
+    const [conn,setConn] = useState<DbConnection|null>(SPACETIME_DB_CONNECTION);
+    const [connected,setConnected] = useState<boolean>(conn?.isActive || false);
+    const [identity,setIdentity] = useState<Identity|null>(conn?.identity || null);
 
     const onConnect = useCallback((conn: DbConnection,identity: Identity,token: string) => {
         setIdentity(identity);
@@ -26,14 +29,16 @@ export const useSpacetimeDB = (props: { url: string }) => {
     },[]);
 
     useEffect(() => {
-        DbConnection.builder()
-        .withUri(props.url)
-        .withModuleName("place")
-        .withToken(localStorage.getItem("authToken") || "")
-        .onConnect(onConnect)
-        .onDisconnect(onDisconnect)
-        .onConnectError(onConnectError)
-        .build();
+        if(!conn?.isActive) {
+            DbConnection.builder()
+            .withUri(props.url)
+            .withModuleName("place")
+            .withToken(localStorage.getItem("authToken") || "")
+            .onConnect(onConnect)
+            .onDisconnect(onDisconnect)
+            .onConnectError(onConnectError)
+            .build();
+        }
     },[props.url,onConnect,onDisconnect,onConnectError]);
 
     return useMemo(() => {

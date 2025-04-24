@@ -1,4 +1,5 @@
 mod tables;
+use std::time::Duration;
 use spacetimedb::{ReducerContext, Table};
 use tables::{config, disconnected_players, pixels, players, to_rgb, Config, Pixel, Player, PIXEL_HEIGHT, PIXEL_WIDTH};
 
@@ -17,7 +18,7 @@ pub fn init(ctx: &ReducerContext) {
     if ctx.db.config().count() == 0 {
         ctx.db.config().insert(Config {
             config_id: 0,
-            cooldown_seconds: 0
+            cooldown_seconds: 1
         });
     }
 }
@@ -31,15 +32,15 @@ pub fn identity_connected(ctx: &ReducerContext) -> Result<(),String> {
         return Ok(());
     }
 
-    ctx.db.players().try_insert(Player {
-        identity: ctx.sender,
-        next_action: ctx.timestamp
-        //We don't want new players to get an immediate action otherwise best strat is just
-        //spawn a bunch of new players
-        //next_action: ctx.timestamp.checked_add_duration(Duration::from_secs(COOLDOWN)).unwrap()
-    }).map_err(|_err| {
-        return "Duplicate player connection".to_string();
-    })?;
+    if ctx.db.players().identity().find(ctx.sender).is_none() {
+        let config = ctx.db.config().config_id().find(0).unwrap();
+        ctx.db.players().try_insert(Player { 
+            identity: ctx.sender, 
+            next_action: ctx.timestamp.checked_add(Duration::from_secs(config.cooldown_seconds).into()).unwrap() 
+        }).map_err(|_err| {
+            return "Duplicate Player".to_string();
+        })?;
+    }
 
     return Ok(());
 }

@@ -60,20 +60,25 @@ export const PlaceImage = (props: {
             return;
         }
 
-        spacetimeDb.conn.db.players.onInsert((_ctx,row: Player) => {
+        const playerInsert = (_ctx: EventContext,row: Player) => {
             placeStore.setNextRestoreTimestamp(dayjs(row.nextAction.toDate()));
-        });
+        };
+        spacetimeDb.conn.db.players.onInsert(playerInsert);
 
-        spacetimeDb.conn.db.players.onUpdate((_ctx,_oldRow: Player,newRow: Player) => {
+        const playerUpdate = (_ctx: EventContext,_oldRow: Player,newRow: Player) => {
             placeStore.setNextRestoreTimestamp(dayjs(newRow.nextAction.toDate()));    
-        });
+        };
+        spacetimeDb.conn.db.players.onUpdate(playerUpdate);
 
-        spacetimeDb.conn.db.pixels.onUpdate((_ctx: EventContext, _oldRow: Pixel, newRow: Pixel) => {
+        const pixelsUpdate = (_ctx: EventContext, _oldRow: Pixel, newRow: Pixel) => {
+            console.log('pixels update!');
             if(refPixelData.current) {
                 refPixelData.current?.colorDataView.setUint32(4*newRow.pixelId,newRow.color);
                 refPixelData.current.dirty = true;
             }
-        });
+        };
+        spacetimeDb.conn.db.pixels.onUpdate(pixelsUpdate);
+
         const playerSub = spacetimeDb.conn.subscriptionBuilder()
         .onApplied(() => {}) 
         .onError((ex: any) => {
@@ -81,7 +86,6 @@ export const PlaceImage = (props: {
             console.error("Failed to subscribe to players table");
         })
         .subscribe("SELECT * FROM players");
-
 
         const startTime = performance.now();
         const pixelSub = spacetimeDb.conn.subscriptionBuilder()
@@ -104,8 +108,12 @@ export const PlaceImage = (props: {
         .subscribe("SELECT * FROM pixels");
 
         return () => { 
+            console.log("clear sub use effect!");
             playerSub.unsubscribe();
-            pixelSub.unsubscribe() 
+            pixelSub.unsubscribe();
+            spacetimeDb.conn?.db.players.removeOnInsert(playerInsert);
+            spacetimeDb.conn?.db.players.removeOnUpdate(playerUpdate);
+            spacetimeDb.conn?.db.pixels.removeOnUpdate(pixelsUpdate);
         };
     },[spacetimeDb.conn]);
 
@@ -125,7 +133,6 @@ export const PlaceImage = (props: {
 
     const placePixel = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
         if(!spacetimeDb.conn || !spacetimeDb.connected || !containerRef.current || !mouseInfoRef.current) {
-            console.log({ spacetimeDb });
             return;
         }
 
@@ -134,6 +141,22 @@ export const PlaceImage = (props: {
             return;
         }
 
+        const position = mouseInfoRef.current.canvasPosition();
+        const pixelX = position[0];
+        const pixelY = position[1];
+        const pixelId = pixelY*CANVAS_WIDTH + pixelX;
+        if(placeStore.clickMode === "EyeDropper") 
+        {
+            if(refPixelData.current) {
+                const pixel = refPixelData.current?.colorDataView.getUint32(4*pixelId);
+                const r = ((pixel >> 24) & 0xFF).toString(16);
+                const g = ((pixel >> 16) & 0xFF).toString(16);
+                const b = ((pixel >> 8) & 0xFF).toString(16);
+                placeStore.setColor(`#${r}${g}${b}`);
+            }
+            placeStore.setClickMode("Pixel");
+            return;
+        }
         //Convert the hex string to a proper color
         //for some reason things are kept in little-endian?
         const trimmedNumber = placeStore.color.replace("#","");
@@ -141,14 +164,9 @@ export const PlaceImage = (props: {
         const g = trimmedNumber.substring(2,4);
         const b = trimmedNumber.substring(4,6);
         const colorNumber = parseInt(r,16) << 24 | parseInt(g,16) << 16 | parseInt(b,16) << 8 | 0xFF;
-
-        const position = mouseInfoRef.current.canvasPosition();
-        const pixelX = position[0];
-        const pixelY = position[1];
-        const pixelId = pixelY*CANVAS_WIDTH + pixelX;
         spacetimeDb.conn.reducers.updatePixelCoord(pixelId,colorNumber);
 
-    },[placeStore.color,placeStore.nextRestoreTimestamp,props.pixelScale,spacetimeDb.conn,spacetimeDb.connected]);
+    },[placeStore.color,placeStore.clickMode,placeStore.nextRestoreTimestamp,props.pixelScale,spacetimeDb.conn,spacetimeDb.connected]);
 
     const style = useMemo(() => {
         return { 
@@ -161,10 +179,33 @@ export const PlaceImage = (props: {
         
     },[props.pixelScale,loading]);
 
+    const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        
+        if(placeStore.colorPickerOpen) {
+            return;
+        }
+
+        //This should be a handler passed into the mouse info
+        if(placeStore.clickMode === "EyeDropper" && mouseInfoRef.current) {
+            const position = mouseInfoRef.current.canvasPosition();
+            const pixelX = position[0];
+            const pixelY = position[1];
+            const pixelId = pixelY*CANVAS_WIDTH + pixelX;
+            if(refPixelData.current) {
+                const pixel = refPixelData.current?.colorDataView.getUint32(4*pixelId);
+                const r = ((pixel >> 24) & 0xFF).toString(16);
+                const g = ((pixel >> 16) & 0xFF).toString(16);
+                const b = ((pixel >> 8) & 0xFF).toString(16);
+                placeStore.setEyeDropColor(`#${r}${g}${b}`);
+            }
+        }
+        mouseInfoRef.current?.onMouseMove(e);
+    },[placeStore]);
+
     return (
         <div className="app-container"
             ref={containerRef}
-            onMouseMove={mouseInfoRef.current?.onMouseMove}
+            onMouseMove={handleMouseMove}
         >
             <div
                 className="place-image-container"
