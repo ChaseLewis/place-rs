@@ -73,7 +73,7 @@ export const PlaceImage = (props: {
         const pixelsUpdate = (_ctx: EventContext, _oldRow: Pixel, newRow: Pixel) => {
             console.log('pixels update!');
             if(refPixelData.current) {
-                refPixelData.current?.colorDataView.setUint32(4*newRow.pixelId,newRow.color);
+                refPixelData.current?.colorDataView.setUint32(4*newRow.pixelId,newRow.color,false);
                 refPixelData.current.dirty = true;
             }
         };
@@ -95,7 +95,7 @@ export const PlaceImage = (props: {
             if(refPixelData.current)
             {
                 for(const pixel of ctx.db.pixels.iter()) { 
-                    refPixelData.current?.colorDataView.setUint32(4*pixel.pixelId,pixel.color); 
+                    refPixelData.current?.colorDataView.setUint32(4*pixel.pixelId,pixel.color,false); 
                 }
                 refPixelData.current.dirty = true;
             }
