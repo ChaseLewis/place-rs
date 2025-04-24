@@ -9,7 +9,9 @@ import { MouseInfo, MouseInfoRef } from './components/mouseInfo';
 import { usePlaceStore } from './store/usePlaceStore';
 import dayjs from 'dayjs';
 import { TileBar } from './components/tileBar';
-import useMouse from '@react-hook/mouse-position';
+import useResizeObserver from '@react-hook/resize-observer';
+import './place.css';
+
 export interface PixelRef {
     color: ImageData,
     colorDataView: DataView,
@@ -24,21 +26,32 @@ const useRefInit = function<T>(init: () => T) {
     return ref;
 }
 
+
 export const PlaceImage = (props: {
     url: string, 
-    pixelScale: number, 
-    setPixelScale?: (scale: number) => void;
     style?: React.CSSProperties
 }) => { 
     
     const [loading,setLoading] = useState(true);
+    const [pixelScale,setPixelScale] = useState(1);
     const placeStore = usePlaceStore();
     const mouseInfoRef = useRef<MouseInfoRef>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const resizeInfo = useRef({ 
+        oldCanvasRect: new DOMRect(),
+        oldContainerRect: new DOMRect(),
+        oldScrollTop: 0,
+        oldScrollLeft: 0,
+        oldClientX: 0,
+        oldClientY: 0,
+        oldOffsetX: 0,
+        oldOffsetY: 0,
+        oldPageX: 0,
+        oldPageY: 0 
+    });
     mouseInfoRef.current?.setCanvasRef(canvasRef.current);
     mouseInfoRef.current?.setContainerRef(containerRef.current);
-
     const spacetimeDb = useSpacetimeDB({ url: props.url });
     const refPixelData = useRefInit<PixelRef>(() => {
         const colorBuffer = new ImageData(CANVAS_WIDTH,CANVAS_HEIGHT);
@@ -55,6 +68,60 @@ export const PlaceImage = (props: {
         return () => { window.onbeforeunload = null };
     },[]);
 
+    useEffect(() => {
+        const wheelHandler = (e: WheelEvent) => {
+          if(e.ctrlKey)
+          {
+            e.preventDefault();
+            const deltaValue = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+            //We need to put this into place Image -> then we need to handle the appropriate scroll
+            //offset we want to get to
+            if(containerRef.current && canvasRef.current) 
+            {
+                resizeInfo.current = {
+                    oldCanvasRect: canvasRef.current.getBoundingClientRect(),
+                    oldContainerRect: containerRef.current.getBoundingClientRect(),
+                    oldScrollLeft: containerRef.current.scrollLeft,
+                    oldScrollTop: containerRef.current.scrollTop,
+                    oldPageX: e.pageX,
+                    oldPageY: e.pageY,
+                    oldOffsetX: e.offsetX,
+                    oldOffsetY: e.offsetY,
+                    oldClientX: e.clientX,
+                    oldClientY: e.clientY
+                };
+            }
+
+            setPixelScale((old) => { 
+              const newScale = Math.min(Math.max(0.5,old - 0.1*deltaValue),25.0);
+              return newScale;
+            });
+            return false;
+          }
+        };
+    
+        window.addEventListener("wheel",wheelHandler,{ passive: false });
+    
+        return () => {
+          window.removeEventListener("wheel",wheelHandler);
+        };
+      },[]);
+
+    useResizeObserver(canvasRef, (entry) => { 
+        if(!containerRef.current || !canvasRef.current) {
+            return;
+        }
+
+        const old = resizeInfo.current;
+        const normX = old.oldOffsetX/old.oldCanvasRect.width;
+        const normY = old.oldOffsetY/old.oldCanvasRect.height;
+        const canvasRect = canvasRef.current.getBoundingClientRect();
+        const offsetX = normX*canvasRect.width + canvasRef.current.offsetLeft - old.oldClientX;
+        const offsetY = normY*canvasRect.height + canvasRef.current.offsetTop - old.oldClientY;
+        containerRef.current.scrollLeft = offsetX;
+        containerRef.current.scrollTop = offsetY;
+    });
+  
     useEffect(() => {
         if(!spacetimeDb.conn) {
             return;
@@ -73,7 +140,7 @@ export const PlaceImage = (props: {
         const pixelsUpdate = (_ctx: EventContext, _oldRow: Pixel, newRow: Pixel) => {
             console.log('pixels update!');
             if(refPixelData.current) {
-                refPixelData.current?.colorDataView.setUint32(4*newRow.pixelId,newRow.color,false);
+                refPixelData.current?.colorDataView.setUint32(4*newRow.pixelId,newRow.color);
                 refPixelData.current.dirty = true;
             }
         };
@@ -95,7 +162,7 @@ export const PlaceImage = (props: {
             if(refPixelData.current)
             {
                 for(const pixel of ctx.db.pixels.iter()) { 
-                    refPixelData.current?.colorDataView.setUint32(4*pixel.pixelId,pixel.color,false); 
+                    refPixelData.current?.colorDataView.setUint32(4*pixel.pixelId,pixel.color); 
                 }
                 refPixelData.current.dirty = true;
             }
@@ -149,9 +216,9 @@ export const PlaceImage = (props: {
         {
             if(refPixelData.current) {
                 const pixel = refPixelData.current?.colorDataView.getUint32(4*pixelId);
-                const r = ((pixel >> 24) & 0xFF).toString(16);
-                const g = ((pixel >> 16) & 0xFF).toString(16);
-                const b = ((pixel >> 8) & 0xFF).toString(16);
+                const r = ((pixel >> 24) & 0xFF).toString(16).padStart(2,"0");
+                const g = ((pixel >> 16) & 0xFF).toString(16).padStart(2,"0");
+                const b = ((pixel >> 8) & 0xFF).toString(16).padStart(2,"0");
                 placeStore.setColor(`#${r}${g}${b}`);
             }
             placeStore.setClickMode("Pixel");
@@ -166,18 +233,18 @@ export const PlaceImage = (props: {
         const colorNumber = parseInt(r,16) << 24 | parseInt(g,16) << 16 | parseInt(b,16) << 8 | 0xFF;
         spacetimeDb.conn.reducers.updatePixelCoord(pixelId,colorNumber);
 
-    },[placeStore.color,placeStore.clickMode,placeStore.nextRestoreTimestamp,props.pixelScale,spacetimeDb.conn,spacetimeDb.connected]);
+    },[placeStore.color,placeStore.clickMode,placeStore.nextRestoreTimestamp,pixelScale,spacetimeDb.conn,spacetimeDb.connected]);
 
     const style = useMemo(() => {
         return { 
-            width: `${props.pixelScale*CANVAS_WIDTH}px`, 
-            height: `${props.pixelScale*CANVAS_HEIGHT}px`,
+            width: `${pixelScale*CANVAS_WIDTH}px`, 
+            height: `${pixelScale*CANVAS_HEIGHT}px`,
             imageRendering: "pixelated",
             margin: "100px",
             display: loading ? "none" : undefined
         } as React.CSSProperties;
         
-    },[props.pixelScale,loading]);
+    },[pixelScale,loading]);
 
     const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         
@@ -193,12 +260,13 @@ export const PlaceImage = (props: {
             const pixelId = pixelY*CANVAS_WIDTH + pixelX;
             if(refPixelData.current) {
                 const pixel = refPixelData.current?.colorDataView.getUint32(4*pixelId);
-                const r = ((pixel >> 24) & 0xFF).toString(16);
-                const g = ((pixel >> 16) & 0xFF).toString(16);
-                const b = ((pixel >> 8) & 0xFF).toString(16);
+                const r = ((pixel >> 24) & 0xFF).toString(16).padStart(2,"0");
+                const g = ((pixel >> 16) & 0xFF).toString(16).padStart(2,"0");
+                const b = ((pixel >> 8) & 0xFF).toString(16).padStart(2,"0");
                 placeStore.setEyeDropColor(`#${r}${g}${b}`);
             }
         }
+
         mouseInfoRef.current?.onMouseMove(e);
     },[placeStore]);
 
@@ -217,8 +285,8 @@ export const PlaceImage = (props: {
                 <MouseInfo 
                     ref={mouseInfoRef} 
                     hide={loading} 
-                    pixelScale={props.pixelScale} 
-                    setPixelScale={props.setPixelScale}
+                    pixelScale={pixelScale} 
+                    setPixelScale={setPixelScale}
                 />
                 <canvas
                     ref={canvasRef} 

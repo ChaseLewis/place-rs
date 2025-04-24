@@ -8,6 +8,7 @@ import { usePlaceStore } from '../store/usePlaceStore';
 
 export interface MouseInfoRef {
     canvasPosition(): [number,number];
+    mousePosition(): [number,number];
     setCanvasRef: (canvas: HTMLCanvasElement|null) => void;
     setContainerRef: (container: HTMLDivElement|null) => void;
     onMouseMove: (e: React.MouseEvent<HTMLElement>) => void;
@@ -51,6 +52,7 @@ export const MouseInfo = forwardRef((props: { hide: boolean, pixelScale: number,
     useImperativeHandle(ref,() => {
         return {
             canvasPosition: () => { return positionRef.current; },
+            mousePosition: () => { return lastMousePosition.current; },
             setCanvasRef: (canvas: HTMLCanvasElement|null) => {
                 canvasRef.current = canvas;
             },

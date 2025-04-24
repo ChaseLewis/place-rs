@@ -3,3 +3,13 @@
     image-rendering: pixelated;
     margin: 100px;
 }
+
+.app-container {
+    overflow: auto;
+    scrollbar-width: 15px;
+    scrollbar-color: transparent transparent;
+}
+
+.app-container:hover {
+    scrollbar-color: gray transparent;  
+}
