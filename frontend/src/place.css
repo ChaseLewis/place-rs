@@ -1,7 +1,7 @@
 .place-canvas {
     -ms-interpolation-mode: nearest neighbour;
     image-rendering: pixelated;
-    margin: 100px;
+    margin: 25px;
 }
 
 .app-container {

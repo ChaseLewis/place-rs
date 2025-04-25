@@ -9,7 +9,6 @@ import { MouseInfo, MouseInfoRef } from './components/mouseInfo';
 import { usePlaceStore } from './store/usePlaceStore';
 import dayjs from 'dayjs';
 import { TileBar } from './components/tileBar';
-import useResizeObserver from '@react-hook/resize-observer';
 import './place.css';
 
 export interface PixelRef {
@@ -26,6 +25,16 @@ const useRefInit = function<T>(init: () => T) {
     return ref;
 }
 
+interface ZoomInfo {
+    normXTarget: number,
+    normYTarget: number,
+    clientX: number,
+    clientY: number
+}
+
+interface ZoomUpdate {
+    newZoomValue: number
+}
 
 export const PlaceImage = (props: {
     url: string, 
@@ -38,18 +47,8 @@ export const PlaceImage = (props: {
     const mouseInfoRef = useRef<MouseInfoRef>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const resizeInfo = useRef({ 
-        oldCanvasRect: new DOMRect(),
-        oldContainerRect: new DOMRect(),
-        oldScrollTop: 0,
-        oldScrollLeft: 0,
-        oldClientX: 0,
-        oldClientY: 0,
-        oldOffsetX: 0,
-        oldOffsetY: 0,
-        oldPageX: 0,
-        oldPageY: 0 
-    });
+    const zoomInfo = useRef<ZoomInfo|null>(null);
+    const deferredZoomUpdate = useRef<ZoomUpdate>({ newZoomValue: 1.0 });
     mouseInfoRef.current?.setCanvasRef(canvasRef.current);
     mouseInfoRef.current?.setContainerRef(containerRef.current);
     const spacetimeDb = useSpacetimeDB({ url: props.url });
@@ -73,54 +72,45 @@ export const PlaceImage = (props: {
           if(e.ctrlKey)
           {
             e.preventDefault();
-            const deltaValue = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-            //We need to put this into place Image -> then we need to handle the appropriate scroll
-            //offset we want to get to
-            if(containerRef.current && canvasRef.current) 
+            const target = (e.target as HTMLElement);
+            if(target.matches("canvas") && canvasRef.current)
             {
-                resizeInfo.current = {
-                    oldCanvasRect: canvasRef.current.getBoundingClientRect(),
-                    oldContainerRect: containerRef.current.getBoundingClientRect(),
-                    oldScrollLeft: containerRef.current.scrollLeft,
-                    oldScrollTop: containerRef.current.scrollTop,
-                    oldPageX: e.pageX,
-                    oldPageY: e.pageY,
-                    oldOffsetX: e.offsetX,
-                    oldOffsetY: e.offsetY,
-                    oldClientX: e.clientX,
-                    oldClientY: e.clientY
-                };
+                const canvasBox = canvasRef.current.getBoundingClientRect();
+                const normXTarget = e.offsetX/canvasBox.width;
+                const normYTarget = e.offsetY/canvasBox.height;
+                if(!zoomInfo.current)
+                {
+                    zoomInfo.current = {
+                        normXTarget,
+                        normYTarget,
+                        clientX: e.clientX,
+                        clientY: e.clientY
+                    };
+                }
             }
 
-            setPixelScale((old) => { 
-              const newScale = Math.min(Math.max(0.5,old - 0.1*deltaValue),25.0);
-              return newScale;
-            });
+            const deltaValue = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+            deferredZoomUpdate.current.newZoomValue = Math.min(Math.max(0.5,deferredZoomUpdate.current.newZoomValue - 0.1*deltaValue),25.0);
             return false;
           }
         };
+
+        const clearZoomInfo = () => {
+            zoomInfo.current = null;
+        };
     
         window.addEventListener("wheel",wheelHandler,{ passive: false });
+        window.addEventListener("mousemove",clearZoomInfo,{ passive: false });
+        window.addEventListener("mouseleave",clearZoomInfo,{ passive: false });
+        window.addEventListener("mouseenter",clearZoomInfo,{ passive: false });
     
         return () => {
           window.removeEventListener("wheel",wheelHandler);
+          window.removeEventListener("mousemove",clearZoomInfo);
+          window.removeEventListener("mouseenter",clearZoomInfo);
+          window.removeEventListener("mouseleave",clearZoomInfo);
         };
       },[]);
-
-    useResizeObserver(canvasRef, (entry) => { 
-        if(!containerRef.current || !canvasRef.current) {
-            return;
-        }
-
-        const old = resizeInfo.current;
-        const normX = old.oldOffsetX/old.oldCanvasRect.width;
-        const normY = old.oldOffsetY/old.oldCanvasRect.height;
-        const canvasRect = canvasRef.current.getBoundingClientRect();
-        const offsetX = normX*canvasRect.width + canvasRef.current.offsetLeft - old.oldClientX;
-        const offsetY = normY*canvasRect.height + canvasRef.current.offsetTop - old.oldClientY;
-        containerRef.current.scrollLeft = offsetX;
-        containerRef.current.scrollTop = offsetY;
-    });
   
     useEffect(() => {
         if(!spacetimeDb.conn) {
@@ -138,7 +128,6 @@ export const PlaceImage = (props: {
         spacetimeDb.conn.db.players.onUpdate(playerUpdate);
 
         const pixelsUpdate = (_ctx: EventContext, _oldRow: Pixel, newRow: Pixel) => {
-            console.log('pixels update!');
             if(refPixelData.current) {
                 refPixelData.current?.colorDataView.setUint32(4*newRow.pixelId,newRow.color);
                 refPixelData.current.dirty = true;
@@ -147,7 +136,9 @@ export const PlaceImage = (props: {
         spacetimeDb.conn.db.pixels.onUpdate(pixelsUpdate);
 
         const playerSub = spacetimeDb.conn.subscriptionBuilder()
-        .onApplied(() => {}) 
+        .onApplied(() => {
+            console.log("Players sub applied!");
+        }) 
         .onError((ex: any) => {
             console.error(ex);
             console.error("Failed to subscribe to players table");
@@ -185,6 +176,25 @@ export const PlaceImage = (props: {
     },[spacetimeDb.conn]);
 
     useAnimationFrame(() => {
+
+
+        setPixelScale(() => {
+            return deferredZoomUpdate.current.newZoomValue;
+        });
+
+        if(containerRef.current && canvasRef.current && zoomInfo.current) {
+            const zoom = zoomInfo.current;
+            const canvasRect = canvasRef.current.getBoundingClientRect();
+            console.log({ canvasRect });
+            const offsetX = zoom.normXTarget*canvasRect.width + Math.abs(canvasRef.current.offsetLeft) - zoom.clientX;
+            const offsetY = zoom.normYTarget*canvasRect.height + Math.abs(canvasRef.current.offsetTop) - zoom.clientY;
+            containerRef.current.scrollLeft = offsetX;
+            containerRef.current.scrollTop = offsetY;
+            return;
+        }
+
+
+
         if(!canvasRef.current || !refPixelData.current) {
             return;
         }
@@ -198,8 +208,9 @@ export const PlaceImage = (props: {
         refPixelData.current.dirty = false;
     });
 
-    const placePixel = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-        if(!spacetimeDb.conn || !spacetimeDb.connected || !containerRef.current || !mouseInfoRef.current) {
+    //We need to use the mouse position here to actually calculate the pixel placement
+    const placePixel = useCallback((_e: React.MouseEvent<HTMLCanvasElement>) => {
+        if(!spacetimeDb.conn || !spacetimeDb.conn.isActive|| !containerRef.current || !mouseInfoRef.current) {
             return;
         }
 
@@ -233,7 +244,7 @@ export const PlaceImage = (props: {
         const colorNumber = parseInt(r,16) << 24 | parseInt(g,16) << 16 | parseInt(b,16) << 8 | 0xFF;
         spacetimeDb.conn.reducers.updatePixelCoord(pixelId,colorNumber);
 
-    },[placeStore.color,placeStore.clickMode,placeStore.nextRestoreTimestamp,pixelScale,spacetimeDb.conn,spacetimeDb.connected]);
+    },[placeStore.color,placeStore.clickMode,placeStore.nextRestoreTimestamp,pixelScale,spacetimeDb.conn]);
 
     const style = useMemo(() => {
         return { 
@@ -247,7 +258,6 @@ export const PlaceImage = (props: {
     },[pixelScale,loading]);
 
     const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-        
         if(placeStore.colorPickerOpen) {
             return;
         }
@@ -270,6 +280,17 @@ export const PlaceImage = (props: {
         mouseInfoRef.current?.onMouseMove(e);
     },[placeStore]);
 
+    const downloadImage = useCallback(() => {
+        if(canvasRef.current)
+            {
+                var download = document.createElement("a");
+                var image = canvasRef.current.toDataURL("image/png");
+                download.setAttribute("download","pixelz.png");
+                download.setAttribute("href", image);
+                download.click();
+            }
+    },[]);
+
     return (
         <div className="app-container"
             ref={containerRef}
@@ -281,12 +302,14 @@ export const PlaceImage = (props: {
                 {loading && (<Flex justify='center' align='center' style={{ width: "100vw", height: "100vh", background: "#333333"}}>
                     <LoadingOutlined style={{ fontSize: "4em", color: "#1372ed" }}/>
                 </Flex>)}
-                <TileBar hide={loading} />
+                <TileBar hide={loading} downloadImage={downloadImage}/>
                 <MouseInfo 
                     ref={mouseInfoRef} 
                     hide={loading} 
                     pixelScale={pixelScale} 
-                    setPixelScale={setPixelScale}
+                    setPixelScale={(scale: number) => {
+                        deferredZoomUpdate.current.newZoomValue = scale;
+                    }}
                 />
                 <canvas
                     ref={canvasRef} 

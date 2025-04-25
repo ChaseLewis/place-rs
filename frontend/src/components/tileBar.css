@@ -1,8 +1,8 @@
 .tile-bar {
     position: fixed;
-    bottom: 5vh;
+    bottom: min(5vh,50px);
     left: 50vw;
-    width: max(15vw,200px);
+    width: max(15vw,250px);
     transform: translate(-50%,0px);
 
     background: white;
@@ -12,4 +12,5 @@
     font-size: 1.2em;
 
     box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
+    z-index: 1;
 }

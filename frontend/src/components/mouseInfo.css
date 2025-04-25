@@ -1,6 +1,6 @@
 .mouse-position-info {
     position: fixed;
-    top: 5vh;
+    top: min(5vh,35px);
     left: 50vw;
     width: 200px;
     transform: translate(-50%,0px);
@@ -14,4 +14,5 @@
     font-family: monospace;
 
     box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
+    z-index: 1;
 }

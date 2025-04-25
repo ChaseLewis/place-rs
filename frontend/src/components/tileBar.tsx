@@ -1,10 +1,11 @@
 import './tileBar.css';
 import dayjs, { Dayjs } from "dayjs";
 import { useRef, useState } from "react";
-import { Button, ColorPicker, Flex } from "antd";
+import { Button, ColorPicker, Flex, Tooltip } from "antd";
 import { useAnimationFrame } from "motion/react";
 import { usePlaceStore } from "../store/usePlaceStore";
 import { ColorFormatType } from "antd/es/color-picker/interface";
+import { ClockCircleOutlined, CloudDownloadOutlined } from '@ant-design/icons';
 
 interface TileBarStateRef {
     complete: boolean,
@@ -12,7 +13,7 @@ interface TileBarStateRef {
 }
 
 
-export const TileBar = (props: { hide: boolean }) => {
+export const TileBar = (props: { hide: boolean, downloadImage?: () => void }) => {
 
     const placeStore = usePlaceStore();
     const [active,setActive] = useState(false);
@@ -66,11 +67,13 @@ export const TileBar = (props: { hide: boolean }) => {
             })}
         >   
             <div className="color-picker-section">
-                <Button type="text" style={{ "padding": "0px 4px", background: placeStore.clickMode === "EyeDropper" ? "rgba(0,0,0,0.08)" : undefined }} onClick={() => {
-                    placeStore.setClickMode(placeStore.clickMode === "EyeDropper" ? "Pixel" : "EyeDropper");
-                }}>
-                    <img src="/eyedropper.svg" alt="eye dropper" width="25px" />
-                </Button>
+                <Tooltip title="Pick Color From Image">
+                    <Button type="text" style={{ "padding": "0px 4px", background: placeStore.clickMode === "EyeDropper" ? "rgba(0,0,0,0.08)" : undefined }} onClick={() => {
+                        placeStore.setClickMode(placeStore.clickMode === "EyeDropper" ? "Pixel" : "EyeDropper");
+                    }}>
+                        <img src="/eyedropper.svg" alt="eye dropper" width="25px" />
+                    </Button>
+                </Tooltip>
             </div>
             <div className="color-section">
                 <ColorPicker
@@ -90,12 +93,23 @@ export const TileBar = (props: { hide: boolean }) => {
                             placeStore.setClickMode("Pixel");
                         } 
                     }}
+                    destroyTooltipOnHide
                 />
             </div>
             <Flex flex={1} align="center" justify="center" style={{ fontFamily: "monospace" }}>
                 {active ? "Place a tile" : null}
-                {!active ? displayText : null }
+                {!active ? <span><ClockCircleOutlined/> {displayText }</span>: null }
             </Flex>
+            {!!props.downloadImage && (
+                <Tooltip title="Download Image">
+                    <Button 
+                        type="text"
+                        icon={<CloudDownloadOutlined style={{ fontSize: "25px", position: "relative", top: "2px" }} />} 
+                        onClick={props.downloadImage}
+                        style={{ padding: "0px" }} 
+                    />
+                </Tooltip>
+            )}
         </Flex>
     );
 }

@@ -1,9 +1,9 @@
 import './mouseInfo.css';
 import { useAnimationFrame } from 'motion/react';
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from '../util/chunks';
-import { forwardRef, useState, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useState, useImperativeHandle, useRef, useMemo } from 'react';
 import { RollbackOutlined } from '@ant-design/icons';
-import { Button, Flex } from 'antd';
+import { Button, Flex, Tooltip } from 'antd';
 import { usePlaceStore } from '../store/usePlaceStore';
 
 export interface MouseInfoRef {
@@ -66,6 +66,14 @@ export const MouseInfo = forwardRef((props: { hide: boolean, pixelScale: number,
         };
     },[]);
 
+    const positionText = useMemo(() => {
+        return `(${pixelPosition[0]},${pixelPosition[1]})`;
+    },[pixelPosition])
+
+    const zoomText = useMemo(() => {
+        return `x${props.pixelScale.toFixed(2)}`;
+    },[props.pixelScale]);
+
     if(props.hide) {
         return null;
     }
@@ -78,12 +86,18 @@ export const MouseInfo = forwardRef((props: { hide: boolean, pixelScale: number,
         })}
     >
         <Flex flex={1} justify="center" align="center">
-            {`(${pixelPosition[0]},${pixelPosition[1]})`}
+            <Tooltip title="Mouse Canvas Position">
+                {positionText}
+            </Tooltip>
         </Flex> 
         <Flex justify="center" align="center">
-            {`x${props.pixelScale.toFixed(2)}`}
+            <Tooltip title="Zoom">
+                {zoomText}
+            </Tooltip>
         </Flex>
-        <Button  style={{ marginLeft: "4px" }} type="text" onClick={() => props.setPixelScale?.(1.0)}><RollbackOutlined /></Button>
+        <Tooltip title="Reset Zoom">
+            <Button  style={{ marginLeft: "4px" }} type="text" onClick={() => props.setPixelScale?.(1.0)}><RollbackOutlined /></Button>
+        </Tooltip>
     </Flex>
     );
 });
