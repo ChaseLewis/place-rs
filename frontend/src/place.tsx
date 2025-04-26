@@ -113,17 +113,21 @@ export const PlaceImage = (props: {
       },[]);
   
     useEffect(() => {
-        if(!spacetimeDb.conn) {
+        if(!spacetimeDb.conn || !spacetimeDb.identity) {
             return;
         }
 
         const playerInsert = (_ctx: EventContext,row: Player) => {
-            placeStore.setNextRestoreTimestamp(dayjs(row.nextAction.toDate()));
+            if(spacetimeDb.identity && row.identity.isEqual(spacetimeDb.identity)) {
+                placeStore.setNextRestoreTimestamp(dayjs(row.nextAction.toDate()));
+            }
         };
         spacetimeDb.conn.db.players.onInsert(playerInsert);
 
         const playerUpdate = (_ctx: EventContext,_oldRow: Player,newRow: Player) => {
-            placeStore.setNextRestoreTimestamp(dayjs(newRow.nextAction.toDate()));    
+            if(spacetimeDb.identity && newRow.identity.isEqual(spacetimeDb.identity)) {
+                placeStore.setNextRestoreTimestamp(dayjs(newRow.nextAction.toDate()));    
+            }
         };
         spacetimeDb.conn.db.players.onUpdate(playerUpdate);
 
@@ -173,7 +177,7 @@ export const PlaceImage = (props: {
             spacetimeDb.conn?.db.players.removeOnUpdate(playerUpdate);
             spacetimeDb.conn?.db.pixels.removeOnUpdate(pixelsUpdate);
         };
-    },[spacetimeDb.conn]);
+    },[spacetimeDb.conn,spacetimeDb.identity]);
 
     useAnimationFrame(() => {
 
@@ -185,7 +189,6 @@ export const PlaceImage = (props: {
         if(containerRef.current && canvasRef.current && zoomInfo.current) {
             const zoom = zoomInfo.current;
             const canvasRect = canvasRef.current.getBoundingClientRect();
-            console.log({ canvasRect });
             const offsetX = zoom.normXTarget*canvasRect.width + Math.abs(canvasRef.current.offsetLeft) - zoom.clientX;
             const offsetY = zoom.normYTarget*canvasRect.height + Math.abs(canvasRef.current.offsetTop) - zoom.clientY;
             containerRef.current.scrollLeft = offsetX;
