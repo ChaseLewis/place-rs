@@ -98,7 +98,7 @@ export const TileBar = (props: { hide: boolean, downloadImage?: () => void }) =>
             </div>
             <Flex flex={1} align="center" justify="center" style={{ fontFamily: "monospace" }}>
                 {active ? "Place a tile" : null}
-                {!active ? <span><ClockCircleOutlined/> {displayText }</span>: null }
+                {!active ? <span className={placeStore.cooldownClick ? "cooldown-timer" : undefined}><ClockCircleOutlined/> {displayText }</span>: null }
             </Flex>
             {!!props.downloadImage && (
                 <Tooltip title="Download Image">

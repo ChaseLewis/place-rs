@@ -181,11 +181,17 @@ export const PlaceImage = (props: {
 
     useAnimationFrame(() => {
 
-
+        //We handle the zoom like this since handling it in different events
+        //causes a lot of jittering. We can get a smoothly animated zoom this way.
+        //Also you can get multiple wheel/zoom commands per animation frame which
+        //can make react very very very unhappy with draw calls if we handle it there.
         setPixelScale(() => {
             return deferredZoomUpdate.current.newZoomValue;
         });
 
+        //If we are in a zoom operation we want to keep the mouse over the same pixel
+        //and that pixel in the same relative position on screen. This moves the scroll wheel
+        //to manage that.
         if(containerRef.current && canvasRef.current && zoomInfo.current) {
             const zoom = zoomInfo.current;
             const canvasRect = canvasRef.current.getBoundingClientRect();
@@ -197,7 +203,6 @@ export const PlaceImage = (props: {
         }
 
 
-
         if(!canvasRef.current || !refPixelData.current) {
             return;
         }
@@ -207,6 +212,7 @@ export const PlaceImage = (props: {
             return;
         }
 
+        //We have new data so lets draw it to screen!
         ctx.putImageData(refPixelData.current.color,0,0);
         refPixelData.current.dirty = false;
     });
@@ -218,6 +224,7 @@ export const PlaceImage = (props: {
         }
 
         if(!dayjs().isAfter(placeStore.nextRestoreTimestamp)) {
+            placeStore.setCooldownClick(true);
             console.log("Still on cooldown!");
             return;
         }
@@ -246,6 +253,7 @@ export const PlaceImage = (props: {
         const b = trimmedNumber.substring(4,6);
         const colorNumber = parseInt(r,16) << 24 | parseInt(g,16) << 16 | parseInt(b,16) << 8 | 0xFF;
         spacetimeDb.conn.reducers.updatePixelCoord(pixelId,colorNumber);
+        placeStore.setCooldownClick(false);
 
     },[placeStore.color,placeStore.clickMode,placeStore.nextRestoreTimestamp,pixelScale,spacetimeDb.conn]);
 

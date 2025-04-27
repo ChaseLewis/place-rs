@@ -7,17 +7,20 @@ export interface PlaceStore {
     colorPickerOpen: boolean;
     eyeDropColor: string;
     clickMode: ClickMode;
-    nextRestoreTimestamp: Dayjs|null
+    nextRestoreTimestamp: Dayjs|null;
+    cooldownClick: boolean;
     setColor: (color: string) => void;
     setEyeDropColor: (color: string) => void;
     setClickMode: (clickMode: ClickMode) => void;
     setColorPickerOpen: (open: boolean) => void;
     setNextRestoreTimestamp: (timestamp: Dayjs|null) => void;
+    setCooldownClick: (value: boolean) => void;
 }
 
 export const usePlaceStore = create<PlaceStore>((set) => ({
     colorPickerOpen: false,
     clickMode: "Pixel",
+    cooldownClick: false,
     color: localStorage.getItem("selectedColor") || "#FFFFFF",
     eyeDropColor: localStorage.getItem("selectedColor") || "#000000",
     nextRestoreTimestamp: null,
@@ -34,5 +37,6 @@ export const usePlaceStore = create<PlaceStore>((set) => ({
     setClickMode: (clickMode: ClickMode) => {
         set((state) => ({ ...state, clickMode }));
     },
-    setNextRestoreTimestamp: (nextRestoreTimestamp: Dayjs|null) => { set((state) => ({ ...state, nextRestoreTimestamp }))}
+    setNextRestoreTimestamp: (nextRestoreTimestamp: Dayjs|null) => { set((state) => ({ ...state, nextRestoreTimestamp }))},
+    setCooldownClick: (value: boolean) => { set((state) => ({ ...state, cooldownClick: value }))}
 }));

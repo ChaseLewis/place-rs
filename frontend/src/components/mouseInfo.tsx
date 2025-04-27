@@ -96,7 +96,7 @@ export const MouseInfo = forwardRef((props: { hide: boolean, pixelScale: number,
             </Tooltip>
         </Flex>
         <Tooltip title="Reset Zoom">
-            <Button  style={{ marginLeft: "4px" }} type="text" onClick={() => props.setPixelScale?.(1.0)}><RollbackOutlined /></Button>
+            <Button  style={{ padding: "4px 0px" }} type="text" onClick={() => props.setPixelScale?.(1.0)}><RollbackOutlined /></Button>
         </Tooltip>
     </Flex>
     );
