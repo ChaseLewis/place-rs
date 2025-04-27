@@ -15,6 +15,7 @@ declare class ConnectionId {
      * Compare two connection IDs for equality.
      */
     isEqual(other: ConnectionId): boolean;
+    toPrimaryKey(): bigint;
     /**
      * Print the connection ID as a hexadecimal string.
      */
@@ -58,7 +59,6 @@ declare class BinaryReader {
 declare class BinaryWriter {
     #private;
     constructor(size: number);
-    toBase64(): string;
     getBuffer(): Uint8Array;
     writeUInt8Array(value: Uint8Array): void;
     writeBool(value: boolean): void;
@@ -164,10 +164,7 @@ declare class ProductType {
     constructor(elements: ProductTypeElement[]);
     isEmpty(): boolean;
     serialize: (writer: BinaryWriter, value: object) => void;
-    intoMapKey(value: any): ComparablePrimitive;
-    deserialize: (reader: BinaryReader) => {
-        [key: string]: any;
-    };
+    deserialize: (reader: BinaryReader) => any;
 }
 declare class MapType {
     keyType: AlgebraicType;
@@ -181,7 +178,6 @@ type EnumLabel = {
     label: string;
 };
 type AnyType = ProductType | SumType | ArrayBaseType | MapType | EnumLabel | TypeRef | None;
-type ComparablePrimitive = number | string | String | boolean | bigint;
 /**
  * The SpacetimeDB Algebraic Type System (SATS) is a structural type system in
  * which a nominal type system can be constructed.
@@ -237,14 +233,6 @@ declare class AlgebraicType {
     isScheduleAt(): boolean;
     isTimestamp(): boolean;
     isTimeDuration(): boolean;
-    /**
-     * Convert a value of the algebraic type into something that can be used as a key in a map.
-     * There are no guarantees about being able to order it.
-     * This is only guaranteed to be comparable to other values of the same type.
-     * @param value A value of the algebraic type
-     * @returns Something that can be used as a key in a map.
-     */
-    intoMapKey(value: any): ComparablePrimitive;
     serialize(writer: BinaryWriter, value: any): void;
     deserialize(reader: BinaryReader): any;
 }
@@ -297,6 +285,7 @@ declare class Identity {
      * Print the identity as a hexadecimal string.
      */
     toHexString(): string;
+    toPrimaryKey(): string;
     /**
      * Convert the address to a Uint8Array.
      */
@@ -400,11 +389,7 @@ declare class AlgebraicValue {
 interface TableRuntimeTypeInfo {
     tableName: string;
     rowType: AlgebraicType;
-    primaryKeyInfo?: PrimaryKeyInfo | undefined;
-}
-interface PrimaryKeyInfo {
-    colName: string;
-    colType: AlgebraicType;
+    primaryKey?: string | undefined;
 }
 interface ReducerRuntimeTypeInfo {
     reducerName: string;
@@ -961,7 +946,7 @@ interface DbContext<DBView = any, Reducers = any, SetReducerFlags = any> {
 
 type Operation = {
     type: 'insert' | 'delete';
-    rowId: ComparablePrimitive;
+    rowId: string;
     row: any;
 };
 type TableUpdate = {
@@ -996,7 +981,7 @@ declare class TableCache<RowType = any> {
      */
     iter(): any[];
     applyOperations: (operations: Operation[], ctx: EventContextInterface) => PendingCallback[];
-    update: (ctx: EventContextInterface, rowId: ComparablePrimitive, newRow: RowType, refCountDelta?: number) => PendingCallback | undefined;
+    update: (ctx: EventContextInterface, newDbOp: Operation, oldDbOp: Operation, refCountDelta?: number) => PendingCallback | undefined;
     insert: (ctx: EventContextInterface, operation: Operation, count?: number) => PendingCallback | undefined;
     delete: (ctx: EventContextInterface, operation: Operation, count?: number) => PendingCallback | undefined;
     /**

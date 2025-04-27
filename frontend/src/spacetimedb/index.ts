@@ -32,6 +32,8 @@ import {
 } from "../test-sdk";
 
 // Import and reexport all reducer arg types
+import { CalculateServerStats } from "./calculate_server_stats_reducer.ts";
+export { CalculateServerStats };
 import { IdentityConnected } from "./identity_connected_reducer.ts";
 export { IdentityConnected };
 import { IdentityDisconnected } from "./identity_disconnected_reducer.ts";
@@ -40,38 +42,93 @@ import { UpdatePixelCoord } from "./update_pixel_coord_reducer.ts";
 export { UpdatePixelCoord };
 
 // Import and reexport all table handle types
+import { CalculateServerStatsTimerTableHandle } from "./calculate_server_stats_timer_table.ts";
+export { CalculateServerStatsTimerTableHandle };
+import { ConfigTableHandle } from "./config_table.ts";
+export { ConfigTableHandle };
 import { DisconnectedPlayersTableHandle } from "./disconnected_players_table.ts";
 export { DisconnectedPlayersTableHandle };
 import { PixelsTableHandle } from "./pixels_table.ts";
 export { PixelsTableHandle };
 import { PlayersTableHandle } from "./players_table.ts";
 export { PlayersTableHandle };
+import { ServerStatsTableHandle } from "./server_stats_table.ts";
+export { ServerStatsTableHandle };
 
 // Import and reexport all types
+import { CalculateServerStatsTimer } from "./calculate_server_stats_timer_type.ts";
+export { CalculateServerStatsTimer };
+import { Config } from "./config_type.ts";
+export { Config };
 import { Pixel } from "./pixel_type.ts";
 export { Pixel };
 import { Player } from "./player_type.ts";
 export { Player };
+import { ServerStats } from "./server_stats_type.ts";
+export { ServerStats };
 
 const REMOTE_MODULE = {
   tables: {
+    calculate_server_stats_timer: {
+      tableName: "calculate_server_stats_timer",
+      rowType: CalculateServerStatsTimer.getTypeScriptAlgebraicType(),
+      primaryKey: "scheduledId",
+      primaryKeyInfo: {
+        colName: "scheduledId",
+        colType: AlgebraicType.createU64Type()
+      },
+    },
+    config: {
+      tableName: "config",
+      rowType: Config.getTypeScriptAlgebraicType(),
+      primaryKey: "configId",
+      primaryKeyInfo: {
+        colName: "configId",
+        colType: AlgebraicType.createU32Type()
+      },
+    },
     disconnected_players: {
       tableName: "disconnected_players",
       rowType: Player.getTypeScriptAlgebraicType(),
       primaryKey: "identity",
+      primaryKeyInfo: {
+        colName: "identity",
+        colType: AlgebraicType.createIdentityType()
+      },
     },
     pixels: {
       tableName: "pixels",
       rowType: Pixel.getTypeScriptAlgebraicType(),
       primaryKey: "pixelId",
+      primaryKeyInfo: {
+        colName: "pixelId",
+        colType: AlgebraicType.createU32Type()
+      }
     },
     players: {
       tableName: "players",
       rowType: Player.getTypeScriptAlgebraicType(),
       primaryKey: "identity",
+      primaryKeyInfo: {
+        colName: "identity",
+        colType: AlgebraicType.createIdentityType()
+      },
+    },
+    server_stats: {
+      tableName: "server_stats",
+      rowType: ServerStats.getTypeScriptAlgebraicType(),
+      primaryKey: "statsId",
+      primaryKeyInfo: {
+        colName: "statsId",
+        colType: AlgebraicType.createU32Type()
+      },
     },
   },
   reducers: {
+    calculate_server_stats: {
+      reducerName: "calculate_server_stats",
+      argsType: CalculateServerStats.getTypeScriptAlgebraicType(),
+    },
     identity_connected: {
       reducerName: "identity_connected",
       argsType: IdentityConnected.getTypeScriptAlgebraicType(),
@@ -111,6 +168,7 @@ const REMOTE_MODULE = {
 
 // A type representing all the possible variants of a reducer.
 export type Reducer = never
+| { name: "CalculateServerStats", args: CalculateServerStats }
 | { name: "IdentityConnected", args: IdentityConnected }
 | { name: "IdentityDisconnected", args: IdentityDisconnected }
 | { name: "UpdatePixelCoord", args: UpdatePixelCoord }
@@ -118,6 +176,22 @@ export type Reducer = never
 
 export class RemoteReducers {
   constructor(private connection: DbConnectionImpl, private setCallReducerFlags: SetReducerFlags) {}
+
+  calculateServerStats(timer: CalculateServerStatsTimer) {
+    const __args = { timer };
+    let __writer = new BinaryWriter(1024);
+    CalculateServerStats.getTypeScriptAlgebraicType().serialize(__writer, __args);
+    let __argsBuffer = __writer.getBuffer();
+    this.connection.callReducer("calculate_server_stats", __argsBuffer, this.setCallReducerFlags.calculateServerStatsFlags);
+  }
+
+  onCalculateServerStats(callback: (ctx: ReducerEventContext, timer: CalculateServerStatsTimer) => void) {
+    this.connection.onReducer("calculate_server_stats", callback);
+  }
+
+  removeOnCalculateServerStats(callback: (ctx: ReducerEventContext, timer: CalculateServerStatsTimer) => void) {
+    this.connection.offReducer("calculate_server_stats", callback);
+  }
 
   onIdentityConnected(callback: (ctx: ReducerEventContext) => void) {
     this.connection.onReducer("identity_connected", callback);
@@ -154,6 +228,11 @@ export class RemoteReducers {
 }
 
 export class SetReducerFlags {
+  calculateServerStatsFlags: CallReducerFlags = 'FullUpdate';
+  calculateServerStats(flags: CallReducerFlags) {
+    this.calculateServerStatsFlags = flags;
+  }
+
   updatePixelCoordFlags: CallReducerFlags = 'FullUpdate';
   updatePixelCoord(flags: CallReducerFlags) {
     this.updatePixelCoordFlags = flags;
@@ -163,6 +242,14 @@ export class SetReducerFlags {
 
 export class RemoteTables {
   constructor(private connection: DbConnectionImpl) {}
+
+  get calculateServerStatsTimer(): CalculateServerStatsTimerTableHandle {
+    return new CalculateServerStatsTimerTableHandle(this.connection.clientCache.getOrCreateTable<CalculateServerStatsTimer>(REMOTE_MODULE.tables.calculate_server_stats_timer));
+  }
+
+  get config(): ConfigTableHandle {
+    return new ConfigTableHandle(this.connection.clientCache.getOrCreateTable<Config>(REMOTE_MODULE.tables.config));
+  }
 
   get disconnectedPlayers(): DisconnectedPlayersTableHandle {
     return new DisconnectedPlayersTableHandle(this.connection.clientCache.getOrCreateTable<Player>(REMOTE_MODULE.tables.disconnected_players));
@@ -174,6 +261,10 @@ export class RemoteTables {
 
   get players(): PlayersTableHandle {
     return new PlayersTableHandle(this.connection.clientCache.getOrCreateTable<Player>(REMOTE_MODULE.tables.players));
+  }
+
+  get serverStats(): ServerStatsTableHandle {
+    return new ServerStatsTableHandle(this.connection.clientCache.getOrCreateTable<ServerStats>(REMOTE_MODULE.tables.server_stats));
   }
 }
 

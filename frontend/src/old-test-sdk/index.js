@@ -1,5 +1,3 @@
-import { fromByteArray } from 'base64-js';
-
 // src/binary_reader.ts
 var BinaryReader = class {
   #buffer;
@@ -131,6 +129,8 @@ var BinaryReader = class {
     return value;
   }
 };
+
+// src/binary_writer.ts
 var BinaryWriter = class {
   #buffer;
   #view;
@@ -148,9 +148,6 @@ var BinaryWriter = class {
     newBuffer.set(this.#buffer);
     this.#buffer = newBuffer;
     this.#view = new DataView(this.#buffer.buffer);
-  }
-  toBase64() {
-    return fromByteArray(this.#buffer.subarray(0, this.#offset));
   }
   getBuffer() {
     return this.#buffer.slice(0, this.#offset);
@@ -377,6 +374,9 @@ var ConnectionId = class _ConnectionId {
   isEqual(other) {
     return this.data == other.data;
   }
+  toPrimaryKey() {
+    return this.data;
+  }
   /**
    * Print the connection ID as a hexadecimal string.
    */
@@ -494,6 +494,9 @@ var Identity = class _Identity {
    */
   toHexString() {
     return u256ToHexString(this.data);
+  }
+  toPrimaryKey() {
+    return this.toHexString();
   }
   /**
    * Convert the address to a Uint8Array.
@@ -620,25 +623,6 @@ var ProductType = class {
       element.algebraicType.serialize(writer, value[element.name]);
     }
   };
-  intoMapKey(value) {
-    if (this.elements.length === 1) {
-      if (this.elements[0].name === "__time_duration_micros__") {
-        return value.__time_duration_micros__;
-      }
-      if (this.elements[0].name === "__timestamp_micros_since_unix_epoch__") {
-        return value.__timestamp_micros_since_unix_epoch__;
-      }
-      if (this.elements[0].name === "__identity__") {
-        return value.__identity__;
-      }
-      if (this.elements[0].name === "__connection_id__") {
-        return value.__connection_id__;
-      }
-    }
-    const writer = new BinaryWriter(10);
-    this.serialize(writer, value);
-    return writer.toBase64();
-  }
   deserialize = (reader) => {
     let result = {};
     if (this.elements.length === 1) {
@@ -847,38 +831,6 @@ var AlgebraicType = class _AlgebraicType {
   }
   isTimeDuration() {
     return this.#isI64Newtype("__time_duration_micros__");
-  }
-  /**
-   * Convert a value of the algebraic type into something that can be used as a key in a map.
-   * There are no guarantees about being able to order it.
-   * This is only guaranteed to be comparable to other values of the same type.
-   * @param value A value of the algebraic type
-   * @returns Something that can be used as a key in a map.
-   */
-  intoMapKey(value) {
-    switch (this.type) {
-      case Type.U8:
-      case Type.U16:
-      case Type.U32:
-      case Type.U64:
-      case Type.U128:
-      case Type.U256:
-      case Type.I8:
-      case Type.I16:
-      case Type.I64:
-      case Type.I128:
-      case Type.F32:
-      case Type.F64:
-      case Type.String:
-      case Type.Bool:
-        return value;
-      case Type.ProductType:
-        return this.product.intoMapKey(value);
-      default:
-        const writer = new BinaryWriter(10);
-        this.serialize(writer, value);
-        return writer.toBase64();
-    }
   }
   serialize(writer, value) {
     switch (this.type) {
@@ -2180,7 +2132,8 @@ var TableCache33 = class {
   }
   applyOperations = (operations, ctx) => {
     const pendingCallbacks = [];
-    if (this.tableTypeInfo.primaryKeyInfo !== void 0) {
+    if (this.tableTypeInfo.primaryKey !== void 0) {
+      let hasDelete = false;
       const insertMap = /* @__PURE__ */ new Map();
       const deleteMap = /* @__PURE__ */ new Map();
       for (const op of operations) {
@@ -2188,36 +2141,41 @@ var TableCache33 = class {
           const [_, prevCount] = insertMap.get(op.rowId) || [op, 0];
           insertMap.set(op.rowId, [op, prevCount + 1]);
         } else {
+          hasDelete = true;
           const [_, prevCount] = deleteMap.get(op.rowId) || [op, 0];
           deleteMap.set(op.rowId, [op, prevCount + 1]);
         }
       }
-      for (const [primaryKey, [insertOp, refCount]] of insertMap) {
-        const deleteEntry = deleteMap.get(primaryKey);
-        if (deleteEntry) {
-          const [deleteOp, deleteCount] = deleteEntry;
-          const refCountDelta = refCount - deleteCount;
-          const maybeCb = this.update(
-            ctx,
-            primaryKey,
-            insertOp.row,
-            refCountDelta
-          );
-          if (maybeCb) {
-            pendingCallbacks.push(maybeCb);
+      if (hasDelete) {
+        for (const [primaryKey2, [insertOp, refCount]] of insertMap.entries()) {
+          const deleteEntry = deleteMap.get(primaryKey2);
+          if (deleteEntry) {
+            const [deleteOp, deleteCount] = deleteEntry;
+            const refCountDelta = refCount - deleteCount;
+            const maybeCb = this.update(ctx, insertOp, deleteOp, refCountDelta);
+            if (maybeCb) {
+              pendingCallbacks.push(maybeCb);
+            }
+            deleteMap.delete(primaryKey2);
+          } else {
+            const maybeCb = this.insert(ctx, insertOp, refCount);
+            if (maybeCb) {
+              pendingCallbacks.push(maybeCb);
+            }
           }
-          deleteMap.delete(primaryKey);
-        } else {
-          const maybeCb = this.insert(ctx, insertOp, refCount);
+        }
+        for (const [deleteOp, refCount] of deleteMap.values()) {
+          const maybeCb = this.delete(ctx, deleteOp, refCount);
           if (maybeCb) {
             pendingCallbacks.push(maybeCb);
           }
         }
-      }
-      for (const [deleteOp, refCount] of deleteMap.values()) {
-        const maybeCb = this.delete(ctx, deleteOp, refCount);
-        if (maybeCb) {
-          pendingCallbacks.push(maybeCb);
+      } else {
+        for (const [insertOp, refCount] of insertMap.values()) {
+          const maybeCb = this.insert(ctx, insertOp, refCount);
+          if (maybeCb) {
+            pendingCallbacks.push(maybeCb);
+          }
         }
       }
     } else {
@@ -2237,43 +2195,31 @@ var TableCache33 = class {
     }
     return pendingCallbacks;
   };
-  update = (ctx, rowId, newRow, refCountDelta = 0) => {
-    const existingEntry = this.rows.get(rowId);
-    if (!existingEntry) {
-      stdbLogger(
-        "error",
-        `Updating a row that was not present in the cache. Table: ${this.tableTypeInfo.tableName}, RowId: ${rowId}`
-      );
-      return void 0;
-    }
-    const [oldRow, previousCount] = existingEntry;
+  update = (ctx, newDbOp, oldDbOp, refCountDelta = 0) => {
+    const [oldRow, previousCount] = this.rows.get(oldDbOp.rowId) || [
+      oldDbOp.row,
+      0
+    ];
     const refCount = Math.max(1, previousCount + refCountDelta);
-    if (previousCount + refCountDelta <= 0) {
-      stdbLogger(
-        "error",
-        `Negative reference count for in table ${this.tableTypeInfo.tableName} row ${rowId} (${previousCount} + ${refCountDelta})`
-      );
-      return void 0;
-    }
-    this.rows.set(rowId, [newRow, refCount]);
+    this.rows.delete(oldDbOp.rowId);
+    this.rows.set(newDbOp.rowId, [newDbOp.row, refCount]);
     if (previousCount === 0) {
-      stdbLogger(
-        "error",
-        `Updating a row id in table ${this.tableTypeInfo.tableName} which was not present in the cache (rowId: ${rowId})`
-      );
+      stdbLogger("error", "Updating a row that was not present in the cache");
       return {
         type: "insert",
         table: this.tableTypeInfo.tableName,
         cb: () => {
-          this.emitter.emit("insert", ctx, newRow);
+          this.emitter.emit("insert", ctx, newDbOp.row);
         }
       };
+    } else if (previousCount + refCountDelta <= 0) {
+      stdbLogger("error", "Negative reference count for row");
     }
     return {
       type: "update",
       table: this.tableTypeInfo.tableName,
       cb: () => {
-        this.emitter.emit("update", ctx, oldRow, newRow);
+        this.emitter.emit("update", ctx, oldRow, newDbOp.row);
       }
     };
   };
@@ -2537,10 +2483,6 @@ var WebsocketDecompressAdapter = class _WebsocketDecompressAdapter {
       if (response.ok) {
         const { token } = await response.json();
         url.searchParams.set("token", token);
-      } else {
-        return Promise.reject(
-          new Error(`Failed to verify token: ${response.statusText}`)
-        );
       }
     }
     url.searchParams.set(
@@ -2947,6 +2889,8 @@ var SubscriptionHandleImpl = class {
     return this.#activeState;
   }
 };
+
+// src/db_connection_impl.ts
 function callReducerFlagsToNumber(flags) {
   switch (flags) {
     case "FullUpdate":
@@ -3051,8 +2995,8 @@ var DbConnectionImpl32 = class {
       return v;
     }).catch((e) => {
       stdbLogger("error", "Error connecting to SpacetimeDB WS");
-      this.#emitter.emit("connectError", this, e);
-      return void 0;
+      this.#on("connectError", e);
+      throw e;
     });
   }
   #getNextQueryId = () => {
@@ -3104,22 +3048,20 @@ var DbConnectionImpl32 = class {
       const reader = new BinaryReader(buffer);
       const rows = [];
       const rowType = this.#remoteModule.tables[tableName].rowType;
-      const primaryKeyInfo = this.#remoteModule.tables[tableName].primaryKeyInfo;
+      const primaryKey = this.#remoteModule.tables[tableName].primaryKey;
       while (reader.offset < buffer.length + buffer.byteOffset) {
-        const initialOffset = reader.offset;
         const row = rowType.deserialize(reader);
-        let rowId = void 0;
-        if (primaryKeyInfo !== void 0) {
-          rowId = primaryKeyInfo.colType.intoMapKey(
-            row[primaryKeyInfo.colName]
-          );
+        let rowId;
+        if (primaryKey !== void 0) {
+          rowId = row[primaryKey];
+          if (typeof rowId === "object" && "toPrimaryKey" in rowId) {
+            rowId = rowId.toPrimaryKey();
+          }
         } else {
-          const rowBytes = buffer.subarray(
-            initialOffset - buffer.byteOffset,
-            reader.offset - buffer.byteOffset
+          rowId = JSON.stringify(
+            row,
+            (_, v) => typeof v === "bigint" ? v.toString() : v
           );
-          const asBase64 = fromByteArray(rowBytes);
-          rowId = asBase64;
         }
         rows.push({
           type,
@@ -3279,12 +3221,10 @@ var DbConnectionImpl32 = class {
   }
   #sendMessage(message) {
     this.wsPromise.then((wsResolved) => {
-      if (wsResolved) {
-        const writer = new BinaryWriter(1024);
-        ClientMessage.serialize(writer, message);
-        const encoded = writer.getBuffer();
-        wsResolved.send(encoded);
-      }
+      const writer = new BinaryWriter(1024);
+      ClientMessage.serialize(writer, message);
+      const encoded = writer.getBuffer();
+      wsResolved.send(encoded);
     });
   }
   /**
@@ -3546,9 +3486,7 @@ var DbConnectionImpl32 = class {
    */
   disconnect() {
     this.wsPromise.then((wsResolved) => {
-      if (wsResolved) {
-        wsResolved.close();
-      }
+      wsResolved.close();
     });
   }
   #on(eventName, callback) {

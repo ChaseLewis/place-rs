@@ -1,7 +1,7 @@
 mod tables;
 use std::time::Duration;
-use spacetimedb::{ReducerContext, Table};
-use tables::{config, disconnected_players, pixels, players, to_rgb, Config, Pixel, Player, PIXEL_HEIGHT, PIXEL_WIDTH};
+use spacetimedb::{ReducerContext, ScheduleAt, Table};
+use tables::{calculate_server_stats_timer, config, disconnected_players, pixels, players, server_stats, to_rgb, CalculateServerStatsTimer, Config, Pixel, Player, ServerStats, PIXEL_HEIGHT, PIXEL_WIDTH};
 
 #[spacetimedb::reducer(init)]
 pub fn init(ctx: &ReducerContext) {
@@ -19,6 +19,20 @@ pub fn init(ctx: &ReducerContext) {
         ctx.db.config().insert(Config {
             config_id: 0,
             cooldown_seconds: 1
+        });
+    }
+
+    if ctx.db.server_stats().count() == 0 {
+        ctx.db.server_stats().insert(ServerStats { 
+            stats_id: 0,
+            active_players: ctx.db.players().count()
+        });
+    }
+
+    if ctx.db.calculate_server_stats_timer().count() == 0 {
+        ctx.db.calculate_server_stats_timer().insert(CalculateServerStatsTimer {
+            scheduled_id: 0,
+            scheduled_at: ScheduleAt::Interval(Duration::from_secs(1).into())
         });
     }
 }

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use spacetimedb::{client_visibility_filter, Filter, Identity, ReducerContext, Timestamp};
+use spacetimedb::{client_visibility_filter, Filter, Identity, ReducerContext, Table, Timestamp};
 
 #[spacetimedb::table(name = config)]
 pub struct Config {
@@ -80,3 +80,30 @@ pub fn update_pixel_coord(ctx: &ReducerContext, pixel_id: u32, fill_color: u32) 
     return Ok(());
 }
 
+#[spacetimedb::table(name = server_stats, public)]
+pub struct ServerStats {
+    #[primary_key]
+    pub stats_id: u32,
+    pub active_players: u64
+}
+
+#[spacetimedb::table(name = calculate_server_stats_timer, scheduled(calculate_server_stats))]
+pub struct CalculateServerStatsTimer {
+    #[primary_key]
+    #[auto_inc]
+    pub scheduled_id: u64,
+    pub scheduled_at: spacetimedb::ScheduleAt
+}
+
+#[spacetimedb::reducer]
+pub fn calculate_server_stats(ctx: &ReducerContext, _timer: CalculateServerStatsTimer) -> Result<(),String> {
+    
+    if let Some(stats) = ctx.db.server_stats().stats_id().find(0) {
+        ctx.db.server_stats().stats_id().update(ServerStats {
+            active_players: ctx.db.players().count(),
+            ..stats
+        });
+    }
+
+    return Ok(());
+}
