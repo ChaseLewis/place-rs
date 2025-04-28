@@ -335,7 +335,7 @@ export const PlaceImage = (props: {
                         deferredZoomUpdate.current.newZoomValue = scale;
                     }}
                 />
-                <FavoriteColorBar />
+                <FavoriteColorBar hide={loading}/>
                 <canvas
                     ref={canvasRef} 
                     className="place-image" 

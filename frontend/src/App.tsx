@@ -1,7 +1,7 @@
 import './App.css'
 import { PlaceImage } from './place';
 
-const SPACETIMEDB_URL = import.meta.env.VITE_SPACETIMEDB_URL || "https://localhost:3001";
+const SPACETIMEDB_URL = import.meta.env.VITE_SPACETIMEDB_URL || "http://localhost:3001";
 
 function App() {
 

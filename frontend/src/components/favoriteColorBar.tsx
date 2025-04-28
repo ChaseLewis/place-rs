@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Tooltip } from 'antd';
 import { PlusOutlined, MinusOutlined } from '@ant-design/icons';
 import { usePlaceStore } from '../store/usePlaceStore';
@@ -16,7 +16,7 @@ const PRESET_COLORS = [
   '#FFFFFF'  // White
 ];
 
-export const FavoriteColorBar: React.FC = () => {
+export const FavoriteColorBar = (props: { hide: boolean }) => {
   const { color, favoriteColors, addFavoriteColor, removeFavoriteColor, setColor } = usePlaceStore();
   
   // Add preset colors if no favorites exist
@@ -39,6 +39,10 @@ export const FavoriteColorBar: React.FC = () => {
   const handleSelectColor = (selectedColor: string) => {
     setColor(selectedColor);
   };
+
+  if(props.hide) {
+    return null;
+  }
 
   return (
     <div className="favorite-color-bar">
