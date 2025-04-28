@@ -2519,6 +2519,7 @@ var WebsocketDecompressAdapter = class _WebsocketDecompressAdapter {
   }
   static async createWebSocketFn({
     url,
+    nameOrAddress,
     wsProtocol,
     authToken,
     compression,
@@ -2531,7 +2532,7 @@ var WebsocketDecompressAdapter = class _WebsocketDecompressAdapter {
     }
     if (authToken) {
       headers.set("Authorization", `Bearer ${authToken}`);
-      const tokenUrl = new URL("/v1/identity/websocket-token", url);
+      const tokenUrl = new URL("v1/identity/websocket-token", url);
       tokenUrl.protocol = url.protocol === "wss:" ? "https:" : "http:";
       const response = await fetch(tokenUrl, { method: "POST", headers });
       if (response.ok) {
@@ -2543,14 +2544,16 @@ var WebsocketDecompressAdapter = class _WebsocketDecompressAdapter {
         );
       }
     }
-    url.searchParams.set(
+
+    const databaseUrl =  new URL(`v1/database/${nameOrAddress}/subscribe`,url);
+    databaseUrl.searchParams.set(
       "compression",
       compression === "gzip" ? "Gzip" : "None"
     );
     if (lightMode) {
-      url.searchParams.set("light", "true");
+      databaseUrl.searchParams.set("light", "true");
     }
-    const ws = new WS(url, wsProtocol);
+    const ws = new WS(databaseUrl, wsProtocol);
     return new _WebsocketDecompressAdapter(ws);
   }
 };
@@ -3015,7 +3018,7 @@ var DbConnectionImpl32 = class {
     lightMode
   }) {
     stdbLogger("info", "Connecting to SpacetimeDB WS...");
-    let url = new URL(`v1/database/${nameOrAddress}/subscribe`, uri);
+    let url = new URL(uri);
     if (!/^wss?:/.test(uri.protocol)) {
       url.protocol = "ws:";
     }
@@ -3034,6 +3037,7 @@ var DbConnectionImpl32 = class {
     );
     this.wsPromise = createWSFn({
       url,
+      nameOrAddress,
       wsProtocol: "v1.bsatn.spacetimedb",
       authToken: token,
       compression,

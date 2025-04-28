@@ -2,7 +2,7 @@ import { Flex } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSpacetimeDB } from './useSpacetimeDB';
-import { EventContext, Pixel, Player } from './spacetimedb';
+import { EventContext, Pixel, Player, ServerStats } from './spacetimedb';
 import { useAnimationFrame } from 'motion/react';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from './util/chunks';
 import { MouseInfo, MouseInfoRef } from './components/mouseInfo';
@@ -117,6 +117,18 @@ export const PlaceImage = (props: {
             return;
         }
 
+        const statsInsert = (_ctx: EventContext,row: ServerStats) => {
+            placeStore.setActiveUserCount(row.activePlayers);
+            console.log({ type: "insert", row });
+        }
+        spacetimeDb.conn.db.serverStats.onInsert(statsInsert);
+
+        const statsUpdate = (_ctx: EventContext,row: ServerStats) => {
+            placeStore.setActiveUserCount(row.activePlayers);
+            console.log({ type: "update", row });
+        }
+        spacetimeDb.conn.db.serverStats.onUpdate(statsUpdate);
+
         const playerInsert = (_ctx: EventContext,row: Player) => {
             if(spacetimeDb.identity && row.identity.isEqual(spacetimeDb.identity)) {
                 placeStore.setNextRestoreTimestamp(dayjs(row.nextAction.toDate()));
@@ -173,6 +185,8 @@ export const PlaceImage = (props: {
             console.log("clear sub use effect!");
             playerSub.unsubscribe();
             pixelSub.unsubscribe();
+            spacetimeDb.conn?.db.serverStats.removeOnInsert(statsInsert);
+            spacetimeDb.conn?.db.serverStats.removeOnUpdate(statsUpdate);
             spacetimeDb.conn?.db.players.removeOnInsert(playerInsert);
             spacetimeDb.conn?.db.players.removeOnUpdate(playerUpdate);
             spacetimeDb.conn?.db.pixels.removeOnUpdate(pixelsUpdate);
@@ -253,8 +267,6 @@ export const PlaceImage = (props: {
         const b = trimmedNumber.substring(4,6);
         const colorNumber = parseInt(r,16) << 24 | parseInt(g,16) << 16 | parseInt(b,16) << 8 | 0xFF;
         spacetimeDb.conn.reducers.updatePixelCoord(pixelId,colorNumber);
-        placeStore.setCooldownClick(false);
-
     },[placeStore.color,placeStore.clickMode,placeStore.nextRestoreTimestamp,pixelScale,spacetimeDb.conn]);
 
     const style = useMemo(() => {

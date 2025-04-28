@@ -9,14 +9,14 @@ export interface PlaceStore {
     clickMode: ClickMode;
     nextRestoreTimestamp: Dayjs|null;
     cooldownClick: boolean;
-    activeUserCount: number;
+    activeUserCount: bigint;
     setColor: (color: string) => void;
     setEyeDropColor: (color: string) => void;
     setClickMode: (clickMode: ClickMode) => void;
     setColorPickerOpen: (open: boolean) => void;
     setNextRestoreTimestamp: (timestamp: Dayjs|null) => void;
     setCooldownClick: (value: boolean) => void;
-    setActiveUserCount: (value: number) => void;
+    setActiveUserCount: (value: bigint) => void;
 }
 
 export const usePlaceStore = create<PlaceStore>((set) => ({
@@ -26,7 +26,7 @@ export const usePlaceStore = create<PlaceStore>((set) => ({
     color: localStorage.getItem("selectedColor") || "#FFFFFF",
     eyeDropColor: localStorage.getItem("selectedColor") || "#000000",
     nextRestoreTimestamp: null,
-    activeUserCount: 1,
+    activeUserCount: BigInt(1),
     setColorPickerOpen: (open: boolean) => {
         set((state) => ({ ...state, colorPickerOpen: open }));
     },
@@ -42,5 +42,5 @@ export const usePlaceStore = create<PlaceStore>((set) => ({
     },
     setNextRestoreTimestamp: (nextRestoreTimestamp: Dayjs|null) => { set((state) => ({ ...state, nextRestoreTimestamp }))},
     setCooldownClick: (value: boolean) => { set((state) => ({ ...state, cooldownClick: value }))},
-    setActiveUserCount: (value: number) => { set((state) => ({ ...state, value: Math.max(1,value) }))}
+    setActiveUserCount: (value: bigint) => { set((state) => ({ ...state, value: value }))}
 }));

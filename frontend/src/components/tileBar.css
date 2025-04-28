@@ -15,7 +15,11 @@
     z-index: 1;
 }
 
-.cooldown-timer {
+.tile-bar.cooldown {
+    box-shadow: rgba(255, 0, 0, 0.2) 0px 2px 8px 0px;;
+}
+
+.cooldown .cooldown-timer {
     color: red;
     font-weight: 500;
 }

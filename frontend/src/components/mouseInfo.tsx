@@ -2,8 +2,8 @@ import './mouseInfo.css';
 import { useAnimationFrame } from 'motion/react';
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from '../util/chunks';
 import { forwardRef, useState, useImperativeHandle, useRef, useMemo } from 'react';
-import { CaretUpFilled, MinusOutlined, PlusOutlined, RollbackOutlined } from '@ant-design/icons';
-import { Button, Flex, Slider, Tooltip } from 'antd';
+import { RollbackOutlined } from '@ant-design/icons';
+import { Button, Flex, Tooltip } from 'antd';
 import { usePlaceStore } from '../store/usePlaceStore';
 
 export interface MouseInfoRef {

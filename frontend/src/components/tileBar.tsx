@@ -1,6 +1,6 @@
 import './tileBar.css';
 import dayjs, { Dayjs } from "dayjs";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, ColorPicker, Flex, Tooltip } from "antd";
 import { useAnimationFrame } from "motion/react";
 import { usePlaceStore } from "../store/usePlaceStore";
@@ -11,7 +11,6 @@ interface TileBarStateRef {
     complete: boolean,
     nextRestoreTimestamp: Dayjs | null;
 }
-
 
 export const TileBar = (props: { hide: boolean, downloadImage?: () => void }) => {
 
@@ -55,12 +54,27 @@ export const TileBar = (props: { hide: boolean, downloadImage?: () => void }) =>
         }
     });
 
+
+    useEffect(() => {
+        if(active) {
+            placeStore.setCooldownClick(false);
+        }
+    },[active,placeStore.setCooldownClick]);
+
+    const titleBarClass = useMemo(() => {
+        let className = "tile-bar";
+        if(placeStore.cooldownClick) {
+            className += " cooldown"
+        }
+        return className;
+    },[placeStore.cooldownClick]);
+
     if(!placeStore.nextRestoreTimestamp || props.hide) {
         return null;
     }
 
     return (
-        <Flex gap="4px" className="tile-bar"
+        <Flex gap="4px" className={titleBarClass}
             onClick={((e) => {
                 e.stopPropagation();
                 return false;
@@ -98,7 +112,7 @@ export const TileBar = (props: { hide: boolean, downloadImage?: () => void }) =>
             </div>
             <Flex flex={1} align="center" justify="center" style={{ fontFamily: "monospace" }}>
                 {active ? "Place a tile" : null}
-                {!active ? <span className={placeStore.cooldownClick ? "cooldown-timer" : undefined}><ClockCircleOutlined/> {displayText }</span>: null }
+                {!active ? <span className="cooldown-timer"><ClockCircleOutlined/> {displayText }</span>: null }
             </Flex>
             {!!props.downloadImage && (
                 <Tooltip title="Download Image">
