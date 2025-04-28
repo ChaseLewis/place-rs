@@ -9,6 +9,7 @@ import { MouseInfo, MouseInfoRef } from './components/mouseInfo';
 import { usePlaceStore } from './store/usePlaceStore';
 import dayjs from 'dayjs';
 import { TileBar } from './components/tileBar';
+import { FavoriteColorBar } from './components/favoriteColorBar';
 import './place.css';
 
 export interface PixelRef {
@@ -334,6 +335,7 @@ export const PlaceImage = (props: {
                         deferredZoomUpdate.current.newZoomValue = scale;
                     }}
                 />
+                <FavoriteColorBar />
                 <canvas
                     ref={canvasRef} 
                     className="place-image" 
