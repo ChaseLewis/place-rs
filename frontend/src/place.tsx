@@ -146,6 +146,10 @@ export const PlaceImage = (props: {
             deferredZoomUpdate.current.newZoomValue = processZoom(e,deferredZoomUpdate.current.newZoomValue);
             return false;
           }
+          else
+          {
+            zoomInfo.current = null;
+          }
         };
 
         const clearZoomInfo = () => {
