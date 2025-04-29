@@ -1,14 +1,9 @@
 .favorite-color-bar {
-  position: fixed;
-  bottom: calc(min(5vh,50px) + 50px);
-  left: 50vw;
-  transform: translate(-50%,0px);
   background: white;
   padding: 5px 25px;
   border-radius: 50px;
   display: flex;
   flex-direction: column;
-  box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
   z-index: 1;
   transition: opacity 0.3s ease;
 }

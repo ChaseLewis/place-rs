@@ -1,22 +1,18 @@
 .tile-bar {
-    position: fixed;
-    bottom: min(5vh,50px);
-    left: 50vw;
     width: max(15vw,250px);
-    transform: translate(-50%,0px);
-
     background: white;
     text-align: center; 
-    padding: 5px 25px;
     border-radius: 50px;
     font-size: 1.2em;
-
-    box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
     z-index: 1;
 }
 
-.tile-bar.cooldown {
-    box-shadow: rgba(255, 0, 0, 0.2) 0px 2px 8px 0px;;
+.tile-bar-content {
+    padding: 5px 25px;
+}
+
+.tile-bar-content.cooldown {
+    box-shadow: rgba(255, 0, 0, 0.2) 0px 2px 8px 0px;
 }
 
 .cooldown .cooldown-timer {

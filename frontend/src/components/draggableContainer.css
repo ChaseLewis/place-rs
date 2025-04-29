@@ -1,0 +1,63 @@
+.draggable-container {
+  box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
+  transition: box-shadow 0.3s ease;
+  user-select: none;
+}
+
+.draggable-container.dragging {
+  box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+}
+
+.draggable-handle {
+  position: absolute;
+  top: -18px;
+  right: 5px;
+  background-color: white;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 4px 0px;
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+.draggable-handle:hover {
+  opacity: 1;
+}
+
+.pin-icon {
+  font-size: 14px;
+  color: #666;
+}
+
+.pin-icon:hover {
+  color: #1890ff;
+}
+
+.reset-position-button {
+  position: absolute;
+  top: -18px;
+  left: 5px;
+  background-color: white;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 4px 0px;
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+  font-size: 14px;
+  color: #666;
+}
+
+.reset-position-button:hover {
+  opacity: 1;
+  color: #1890ff;
+}
