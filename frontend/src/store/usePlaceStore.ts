@@ -11,6 +11,8 @@ export interface PlaceStore {
     cooldownClick: boolean;
     activeUserCount: bigint;
     favoriteColors: string[];
+    colorHistory: string[];
+    colorHistoryIndex: number;
     setColor: (color: string) => void;
     setEyeDropColor: (color: string) => void;
     setClickMode: (clickMode: ClickMode) => void;
@@ -20,23 +22,40 @@ export interface PlaceStore {
     setActiveUserCount: (value: bigint) => void;
     addFavoriteColor: (color: string) => void;
     removeFavoriteColor: (color: string) => void;
+    goBackColorHistory: () => void;
+    goForwardColorHistory: () => void;
+    makeHistoryCurrent: () => void;
 }
 
 export const usePlaceStore = create<PlaceStore>((set) => ({
     colorPickerOpen: false,
     clickMode: "Pixel",
     cooldownClick: false,
+    colorHistoryIndex: -1,
     color: localStorage.getItem("selectedColor") || "#000000",
     eyeDropColor: localStorage.getItem("selectedColor") || "#000000",
     nextRestoreTimestamp: null,
     activeUserCount: BigInt(1),
     favoriteColors: JSON.parse(localStorage.getItem("favoriteColors") || "[]"),
+    colorHistory: JSON.parse(localStorage.getItem("colorHistory") || "[]"),
     setColorPickerOpen: (open: boolean) => {
         set((state) => ({ ...state, colorPickerOpen: open }));
     },
     setColor: (color: string) => { 
         localStorage.setItem("selectedColor",color);
-        set((state) => ({ ...state, color, eyeDropColor: color })); 
+        set((state) => {
+
+            let colorHistory = state.colorHistory;
+            if(state.colorHistory.length === 0 || state.colorHistory[state.colorHistory.length-1] !== color) {
+                if(state.colorHistory.length > 100) {
+                    colorHistory = [ ...state.colorHistory.slice(1), color];
+                } else {
+                    colorHistory = [...state.colorHistory, color];
+                }
+            }
+
+            return { ...state, color, eyeDropColor: color, colorHistory, colorHistoryIndex: -1 };
+        });
     },
     setEyeDropColor: (color: string) => {
         set((state) => ({ ...state, eyeDropColor: color }));       
@@ -62,6 +81,41 @@ export const usePlaceStore = create<PlaceStore>((set) => ({
             const updatedFavorites = state.favoriteColors.filter(c => c !== color);
             localStorage.setItem("favoriteColors", JSON.stringify(updatedFavorites));
             return { ...state, favoriteColors: updatedFavorites };
+        });
+    },
+    goBackColorHistory: () => {
+        set((state) => {
+            if(state.colorHistory.length === 0 || state.colorHistoryIndex === 0 || state.clickMode !== "Pixel") {
+                return state;
+            }
+
+            let index = state.colorHistoryIndex < 0 ? state.colorHistory.length-2 : state.colorHistoryIndex - 1;
+            return { ...state, colorHistoryIndex: index, color: state.colorHistory[index] };
+        });
+    },
+    goForwardColorHistory: () => {
+        set((state) => {
+            if(state.colorHistory.length === 0 
+                || state.colorHistoryIndex < 0 
+                || state.colorHistoryIndex >= state.colorHistory.length - 1 
+                || state.clickMode !== "Pixel") {
+                return state;
+            }
+            const newIndex = state.colorHistoryIndex + 1;
+            return { ...state, colorHistoryIndex: newIndex, color: state.colorHistory[newIndex] };
+        });       
+    },
+    makeHistoryCurrent: () => {
+        set((state) => {
+            if(state.colorHistoryIndex > 0 && state.colorHistoryIndex < state.colorHistory.length - 1 && state.colorHistory.length > 1) {
+                let newHistory = [...state.colorHistory.slice(0,state.colorHistoryIndex)];
+                newHistory = newHistory.concat([...state.colorHistory.slice(state.colorHistoryIndex+1)]);
+                newHistory.push(state.colorHistory[state.colorHistoryIndex]);
+
+                return { ...state, colorHistoryIndex: -1, }
+            }
+
+            return state;
         });
     }
 }));

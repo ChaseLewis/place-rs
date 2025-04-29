@@ -71,6 +71,35 @@ export const PlaceImage = (props: {
     });
 
     useEffect(() => {
+        const handleKeys = (e: KeyboardEvent) => {
+            if(e.key === "ArrowLeft") {
+                placeStore.goBackColorHistory();
+                e.preventDefault();
+                return;
+            }
+
+            if(e.key === "ArrowRight") {
+                placeStore.goForwardColorHistory();
+                e.preventDefault();
+                return;
+            }
+
+            if(e.key >= "1" && e.key <= "9") {
+                let offset = parseInt(e.key) - 1;
+                if(offset < placeStore.favoriteColors.length) {
+                    placeStore.setColor(placeStore.favoriteColors[offset]);
+                }
+                return;
+            }
+        };
+        window.addEventListener("keydown",handleKeys);
+
+        return () => {
+            window.removeEventListener("keydown",handleKeys);
+        };
+    },[placeStore]);
+
+    useEffect(() => {
         //Don't want to accidentally navigate away
         window.onbeforeunload = () => { return true; }
         const handleInitialFocus = () => {
@@ -291,7 +320,8 @@ export const PlaceImage = (props: {
         const b = trimmedNumber.substring(4,6);
         const colorNumber = parseInt(r,16) << 24 | parseInt(g,16) << 16 | parseInt(b,16) << 8 | 0xFF;
         spacetimeDb.conn.reducers.updatePixelCoord(pixelId,colorNumber);
-    },[placeStore.color,placeStore.clickMode,placeStore.nextRestoreTimestamp,pixelScale,spacetimeDb.conn]);
+        placeStore.makeHistoryCurrent();
+    },[placeStore,placeStore.nextRestoreTimestamp,pixelScale,spacetimeDb.conn]);
 
     const style = useMemo(() => {
         return { 
