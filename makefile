@@ -2,13 +2,13 @@ init:
 	npm install --prefix ./frontend
 
 spacetimedb-start:
-	spacetime start --listen-addr 0.0.0.0:3001
+	spacetime start --listen-addr localhost:3001
 
 spacetimedb-logs:
-	spacetime logs place --server http://0.0.0.0:3001
+	spacetime logs place --server http://localhost:3001
 
 spacetimedb-publish:
-	spacetime publish -p ./server place --server http://0.0.0.0:3001 -y
+	spacetime publish -p ./server place --server http://localhost:3001 -y
 
 spacetimedb-publish-prod:
 	spacetime publish -p ./server place --server http://pixelz.games:3000

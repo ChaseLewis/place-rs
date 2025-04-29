@@ -26,7 +26,7 @@ export const usePlaceStore = create<PlaceStore>((set) => ({
     colorPickerOpen: false,
     clickMode: "Pixel",
     cooldownClick: false,
-    color: localStorage.getItem("selectedColor") || "#FFFFFF",
+    color: localStorage.getItem("selectedColor") || "#000000",
     eyeDropColor: localStorage.getItem("selectedColor") || "#000000",
     nextRestoreTimestamp: null,
     activeUserCount: BigInt(1),

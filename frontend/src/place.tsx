@@ -15,7 +15,8 @@ import './place.css';
 export interface PixelRef {
     color: ImageData,
     colorDataView: DataView,
-    dirty: boolean
+    dirty: boolean,
+    recentlyFocused: boolean;
 }
 
 const useRefInit = function<T>(init: () => T) {
@@ -35,6 +36,12 @@ interface ZoomInfo {
 
 interface ZoomUpdate {
     newZoomValue: number
+}
+
+function processZoom(e: WheelEvent,oldZoom: number): number {
+    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    const modifier = Math.abs(delta) >= 100 ? 0.005 : 0.1;
+    return Math.min(Math.max(0.5,oldZoom - modifier*delta),25.0);
 }
 
 export const PlaceImage = (props: {
@@ -58,14 +65,31 @@ export const PlaceImage = (props: {
         return {
             color: colorBuffer,
             colorDataView: new DataView(colorBuffer.data.buffer),
-            dirty: true
+            dirty: true,
+            recentlyFocused: false
         } as PixelRef;
     });
 
     useEffect(() => {
         //Don't want to accidentally navigate away
         window.onbeforeunload = () => { return true; }
-        return () => { window.onbeforeunload = null };
+        const handleInitialFocus = () => {
+            if(refPixelData.current && !refPixelData.current.recentlyFocused) {
+                refPixelData.current.recentlyFocused = true;
+                setTimeout(() => { 
+                    if(refPixelData.current) {
+                        refPixelData.current.recentlyFocused = false;
+                    }
+                },100);
+            }
+
+        };
+        window.addEventListener("focus",handleInitialFocus);
+
+        return () => { 
+            window.onbeforeunload = null;
+            window.removeEventListener("focus",handleInitialFocus);
+        };
     },[]);
 
     useEffect(() => {
@@ -90,8 +114,7 @@ export const PlaceImage = (props: {
                 }
             }
 
-            const deltaValue = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-            deferredZoomUpdate.current.newZoomValue = Math.min(Math.max(0.5,deferredZoomUpdate.current.newZoomValue - 0.1*deltaValue),25.0);
+            deferredZoomUpdate.current.newZoomValue = processZoom(e,deferredZoomUpdate.current.newZoomValue);
             return false;
           }
         };
@@ -234,7 +257,7 @@ export const PlaceImage = (props: {
 
     //We need to use the mouse position here to actually calculate the pixel placement
     const placePixel = useCallback((_e: React.MouseEvent<HTMLCanvasElement>) => {
-        if(!spacetimeDb.conn || !spacetimeDb.conn.isActive|| !containerRef.current || !mouseInfoRef.current) {
+        if(!spacetimeDb.conn || !spacetimeDb.conn.isActive|| !containerRef.current || !mouseInfoRef.current || refPixelData.current?.recentlyFocused) {
             return;
         }
 
