@@ -73,9 +73,6 @@ export const TileBar = (props: { hide: boolean, downloadImage?: () => void }) =>
         if(placeStore.cooldownClick) {
             className += " cooldown"
         }
-        if(placeStore.isMobile) {
-            className += " mobile";
-        }
         return className;
     },[placeStore.cooldownClick]);
 
@@ -84,15 +81,17 @@ export const TileBar = (props: { hide: boolean, downloadImage?: () => void }) =>
     }
 
     if(placeStore.isMobile) {
-        return (<Flex gap="4px" className={titleBarClass}
-            align="center"
-            justify="center"
-            onClick={props.downloadImage}
-        >   
+        return (
             <Tooltip title="Download Image">
-                <CloudDownloadOutlined style={{ fontSize: "25px", position: "relative", top: "2px" }} />
+                <Flex gap="4px" className="tile-bar mobile"
+                    align="center"
+                    justify="center"
+                    onClick={props.downloadImage}
+                >   
+                    <CloudDownloadOutlined style={{ fontSize: "25px", padding: "5px 0px" }} />
+                </Flex>
             </Tooltip>
-        </Flex>);  
+        );  
     }
 
     return (

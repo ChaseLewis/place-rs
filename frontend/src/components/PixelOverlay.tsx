@@ -27,8 +27,8 @@ export const PixelOverlay: React.FC<PixelOverlayProps> = ({
   const scrollTimerRef = useRef<number | null>(null);
   
   // We'll use this to track if we should apply the animation class
-  const shouldAnimate = prevPositionRef.current[0] !== pixelPosition[0] || 
-                         prevPositionRef.current[1] !== pixelPosition[1];
+  // const shouldAnimate = prevPositionRef.current[0] !== pixelPosition[0] || 
+  //                        prevPositionRef.current[1] !== pixelPosition[1];
 
   // This effect runs on every frame to closely track mouse movement
   // Using requestAnimationFrame for smoother performance

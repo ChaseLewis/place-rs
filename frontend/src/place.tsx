@@ -10,7 +10,6 @@ import { usePlaceStore } from './store/usePlaceStore';
 import dayjs from 'dayjs';
 import { TileBar } from './components/tileBar';
 import { FavoriteColorBar } from './components/favoriteColorBar';
-import { PixelOverlay } from './components/PixelOverlay';
 import './place.css';
 
 export interface PixelRef {

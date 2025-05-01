@@ -54,6 +54,9 @@ export const useSpacetimeDB = (props: { url: string }) => {
         setWindowDbConnection(null);
         setWindowIdentity(null);
         console.error("Failed to connect to SpacetimeDB: ",err);
+
+        //We do this since an old token can cause 401 issues.
+        localStorage.removeItem("authToken");
     },[]);
 
     const connectHandler = useCallback(() => {

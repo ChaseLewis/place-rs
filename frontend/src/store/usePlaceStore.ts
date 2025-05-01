@@ -56,7 +56,7 @@ export const usePlaceStore = create<PlaceStore>((set) => ({
     tileBarPosition: JSON.parse(localStorage.getItem("tileBarPosition") || '{"x": 50, "y": 95, "isPinned": false}'),
     favoriteBarPosition: JSON.parse(localStorage.getItem("favoriteBarPosition") || '{"x": 50, "y": 85, "isPinned": false}'),
     showResetLayoutButton: JSON.parse(localStorage.getItem("showResetLayoutButton") || "false"),
-    isMobile: isMobile(),
+    isMobile: true || isMobile(),
     setColorPickerOpen: (open: boolean) => {
         set((state) => ({ ...state, colorPickerOpen: open }));
     },
