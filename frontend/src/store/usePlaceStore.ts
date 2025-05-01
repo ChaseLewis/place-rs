@@ -1,6 +1,7 @@
 import { Dayjs } from 'dayjs';
 import { create } from 'zustand';
 import { ClickMode } from '../util/types';
+import { isMobile } from '../util/mobile';
 
 export interface PlaceStore {
     color: string;
@@ -13,6 +14,7 @@ export interface PlaceStore {
     favoriteColors: string[];
     colorHistory: string[];
     colorHistoryIndex: number;
+    isMobile: boolean;
     setColor: (color: string) => void;
     setEyeDropColor: (color: string) => void;
     setClickMode: (clickMode: ClickMode) => void;
@@ -38,6 +40,7 @@ export const usePlaceStore = create<PlaceStore>((set) => ({
     activeUserCount: BigInt(1),
     favoriteColors: JSON.parse(localStorage.getItem("favoriteColors") || "[]"),
     colorHistory: JSON.parse(localStorage.getItem("colorHistory") || "[]"),
+    isMobile: isMobile(),
     setColorPickerOpen: (open: boolean) => {
         set((state) => ({ ...state, colorPickerOpen: open }));
     },

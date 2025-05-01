@@ -23,3 +23,7 @@
     color: red;
     font-weight: 500;
 }
+
+.tile-bar.mobile:hover {
+    background: rgb(250,250,250);
+}

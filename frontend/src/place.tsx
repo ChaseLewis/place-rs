@@ -251,7 +251,6 @@ export const PlaceImage = (props: {
     },[spacetimeDb.conn,spacetimeDb.identity]);
 
     useAnimationFrame(() => {
-
         //We handle the zoom like this since handling it in different events
         //causes a lot of jittering. We can get a smoothly animated zoom this way.
         //Also you can get multiple wheel/zoom commands per animation frame which
@@ -290,7 +289,7 @@ export const PlaceImage = (props: {
 
     //We need to use the mouse position here to actually calculate the pixel placement
     const placePixel = useCallback((_e: React.MouseEvent<HTMLCanvasElement>) => {
-        if(!spacetimeDb.conn || !spacetimeDb.conn.isActive|| !containerRef.current || !mouseInfoRef.current || refPixelData.current?.recentlyFocused) {
+        if(placeStore.isMobile || !spacetimeDb.conn || !spacetimeDb.conn.isActive|| !containerRef.current || !mouseInfoRef.current || refPixelData.current?.recentlyFocused) {
             return;
         }
 
@@ -325,7 +324,7 @@ export const PlaceImage = (props: {
         const colorNumber = parseInt(r,16) << 24 | parseInt(g,16) << 16 | parseInt(b,16) << 8 | 0xFF;
         spacetimeDb.conn.reducers.updatePixelCoord(pixelId,colorNumber);
         placeStore.makeHistoryCurrent();
-    },[placeStore,placeStore.nextRestoreTimestamp,pixelScale,spacetimeDb.conn]);
+    },[placeStore,pixelScale,spacetimeDb.conn]);
 
     const style = useMemo(() => {
         return { 
@@ -339,7 +338,7 @@ export const PlaceImage = (props: {
     },[pixelScale,loading]);
 
     const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-        if(placeStore.colorPickerOpen) {
+        if(placeStore.colorPickerOpen || placeStore.isMobile) {
             return;
         }
 
@@ -377,6 +376,11 @@ export const PlaceImage = (props: {
             ref={containerRef}
             onMouseMove={handleMouseMove}
         >
+            {!loading && placeStore.isMobile && (
+                <div className="view-only-banner">
+                    View Only Mode
+                </div>
+            )}
             <div
                 className="place-image-container"
             >
@@ -386,13 +390,13 @@ export const PlaceImage = (props: {
                 <TileBar hide={loading} downloadImage={downloadImage}/>
                 <MouseInfo 
                     ref={mouseInfoRef} 
-                    hide={loading} 
+                    hide={loading || placeStore.isMobile} 
                     pixelScale={pixelScale} 
                     setPixelScale={(scale: number) => {
                         deferredZoomUpdate.current.newZoomValue = scale;
                     }}
                 />
-                <FavoriteColorBar hide={loading}/>
+                <FavoriteColorBar hide={loading || placeStore.isMobile}/>
                 <canvas
                     ref={canvasRef} 
                     className="place-image" 

@@ -13,3 +13,15 @@
 .app-container:hover {
     scrollbar-color: gray transparent;  
 }
+
+.view-only-banner {
+    position: absolute;
+    width: 100vw;
+    height: 24px;
+    color: white;
+    display: flex;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(16, 83, 251);
+}
