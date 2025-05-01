@@ -1,6 +1,7 @@
 import { Dayjs } from 'dayjs';
 import { create } from 'zustand';
 import { ClickMode } from '../util/types';
+import { isMobile } from '../util/mobile';
 
 export interface BarPosition {
     x: number;
@@ -22,6 +23,7 @@ export interface PlaceStore {
     tileBarPosition: BarPosition;
     favoriteBarPosition: BarPosition;
     showResetLayoutButton: boolean;
+    isMobile: boolean;
     setColor: (color: string) => void;
     setEyeDropColor: (color: string) => void;
     setClickMode: (clickMode: ClickMode) => void;
@@ -54,6 +56,7 @@ export const usePlaceStore = create<PlaceStore>((set) => ({
     tileBarPosition: JSON.parse(localStorage.getItem("tileBarPosition") || '{"x": 50, "y": 95, "isPinned": false}'),
     favoriteBarPosition: JSON.parse(localStorage.getItem("favoriteBarPosition") || '{"x": 50, "y": 85, "isPinned": false}'),
     showResetLayoutButton: JSON.parse(localStorage.getItem("showResetLayoutButton") || "false"),
+    isMobile: isMobile(),
     setColorPickerOpen: (open: boolean) => {
         set((state) => ({ ...state, colorPickerOpen: open }));
     },
