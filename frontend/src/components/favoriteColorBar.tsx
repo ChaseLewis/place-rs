@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Tooltip } from 'antd';
 import { PlusOutlined, MinusOutlined } from '@ant-design/icons';
 import { usePlaceStore } from '../store/usePlaceStore';
+import { DraggableContainer } from './DraggableContainer';
 import './favoriteColorBar.css';
 
 // Preset colors to add if no favorites exist
@@ -17,7 +18,16 @@ const PRESET_COLORS = [
 ];
 
 export const FavoriteColorBar = (props: { hide: boolean }) => {
-  const { color, favoriteColors, addFavoriteColor, removeFavoriteColor, setColor } = usePlaceStore();
+  const placeStore = usePlaceStore();
+  const { 
+    color, 
+    favoriteColors, 
+    addFavoriteColor, 
+    removeFavoriteColor, 
+    setColor, 
+    favoriteBarPosition, 
+    updateFavoriteBarPosition 
+  } = placeStore;
   
   // Add preset colors if no favorites exist
   useEffect(() => {
@@ -27,6 +37,14 @@ export const FavoriteColorBar = (props: { hide: boolean }) => {
       });
     }
   }, []);
+
+  // When a bar is pinned, ensure the reset layout button is visible
+  useEffect(() => {
+    if (!placeStore.showResetLayoutButton && 
+        (placeStore.tileBarPosition.isPinned || favoriteBarPosition.isPinned)) {
+      placeStore.setShowResetLayoutButton(true);
+    }
+  }, [placeStore.tileBarPosition.isPinned, favoriteBarPosition.isPinned]);
   
   const handleAddFavorite = () => {
     addFavoriteColor(color);
@@ -45,7 +63,11 @@ export const FavoriteColorBar = (props: { hide: boolean }) => {
   }
 
   return (
-    <div className="favorite-color-bar">
+    <DraggableContainer
+      position={favoriteBarPosition}
+      onPositionChange={updateFavoriteBarPosition}
+      className="favorite-color-bar"
+    >
       <div className="favorite-colors-container">
         {favoriteColors.map((favoriteColor, index) => (
           <Tooltip title={favoriteColor} key={`${favoriteColor}-${index}`}>
@@ -75,6 +97,6 @@ export const FavoriteColorBar = (props: { hide: boolean }) => {
           </div>
         </Tooltip>
       </div>
-    </div>
+    </DraggableContainer>
   );
 };

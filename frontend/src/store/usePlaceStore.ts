@@ -3,6 +3,12 @@ import { create } from 'zustand';
 import { ClickMode } from '../util/types';
 import { isMobile } from '../util/mobile';
 
+export interface BarPosition {
+    x: number;
+    y: number;
+    isPinned: boolean;
+}
+
 export interface PlaceStore {
     color: string;
     colorPickerOpen: boolean;
@@ -14,6 +20,9 @@ export interface PlaceStore {
     favoriteColors: string[];
     colorHistory: string[];
     colorHistoryIndex: number;
+    tileBarPosition: BarPosition;
+    favoriteBarPosition: BarPosition;
+    showResetLayoutButton: boolean;
     isMobile: boolean;
     setColor: (color: string) => void;
     setEyeDropColor: (color: string) => void;
@@ -27,6 +36,10 @@ export interface PlaceStore {
     goBackColorHistory: () => void;
     goForwardColorHistory: () => void;
     makeHistoryCurrent: () => void;
+    updateTileBarPosition: (position: BarPosition) => void;
+    updateFavoriteBarPosition: (position: BarPosition) => void;
+    setShowResetLayoutButton: (show: boolean) => void;
+    resetLayout: () => void;
 }
 
 export const usePlaceStore = create<PlaceStore>((set) => ({
@@ -40,6 +53,9 @@ export const usePlaceStore = create<PlaceStore>((set) => ({
     activeUserCount: BigInt(1),
     favoriteColors: JSON.parse(localStorage.getItem("favoriteColors") || "[]"),
     colorHistory: JSON.parse(localStorage.getItem("colorHistory") || "[]"),
+    tileBarPosition: JSON.parse(localStorage.getItem("tileBarPosition") || '{"x": 50, "y": 95, "isPinned": false}'),
+    favoriteBarPosition: JSON.parse(localStorage.getItem("favoriteBarPosition") || '{"x": 50, "y": 85, "isPinned": false}'),
+    showResetLayoutButton: JSON.parse(localStorage.getItem("showResetLayoutButton") || "false"),
     isMobile: isMobile(),
     setColorPickerOpen: (open: boolean) => {
         set((state) => ({ ...state, colorPickerOpen: open }));
@@ -120,5 +136,36 @@ export const usePlaceStore = create<PlaceStore>((set) => ({
 
             return state;
         });
+    },
+    updateTileBarPosition: (position: BarPosition) => {
+        set((state) => {
+            localStorage.setItem("tileBarPosition", JSON.stringify(position));
+            return { ...state, tileBarPosition: position };
+        });
+    },
+    updateFavoriteBarPosition: (position: BarPosition) => {
+        set((state) => {
+            localStorage.setItem("favoriteBarPosition", JSON.stringify(position));
+            return { ...state, favoriteBarPosition: position };
+        });
+    },
+    setShowResetLayoutButton: (show: boolean) => {
+        set((state) => {
+            localStorage.setItem("showResetLayoutButton", JSON.stringify(show));
+            return { ...state, showResetLayoutButton: show };
+        });
+    },
+    resetLayout: () => {
+        const defaultTileBarPosition = { x: 50, y: 95, isPinned: false };
+        const defaultFavoriteBarPosition = { x: 50, y: 85, isPinned: false };
+        localStorage.setItem("tileBarPosition", JSON.stringify(defaultTileBarPosition));
+        localStorage.setItem("favoriteBarPosition", JSON.stringify(defaultFavoriteBarPosition));
+        localStorage.setItem("showResetLayoutButton", JSON.stringify(false));
+        set((state) => ({
+            ...state,
+            tileBarPosition: defaultTileBarPosition,
+            favoriteBarPosition: defaultFavoriteBarPosition,
+            showResetLayoutButton: false
+        }));
     }
 }));

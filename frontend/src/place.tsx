@@ -10,6 +10,7 @@ import { usePlaceStore } from './store/usePlaceStore';
 import dayjs from 'dayjs';
 import { TileBar } from './components/tileBar';
 import { FavoriteColorBar } from './components/favoriteColorBar';
+import { PixelOverlay } from './components/PixelOverlay';
 import './place.css';
 
 export interface PixelRef {
@@ -397,6 +398,12 @@ export const PlaceImage = (props: {
                     }}
                 />
                 <FavoriteColorBar hide={loading || placeStore.isMobile}/>
+                <PixelOverlay  
+                    canvasRef={canvasRef as React.RefObject<HTMLCanvasElement>}
+                    pixelPosition={mouseInfoRef.current?.canvasPosition() || [0, 0]}
+                    hide={loading}
+                    pixelScale={pixelScale}
+                />
                 <canvas
                     ref={canvasRef} 
                     className="place-image" 
