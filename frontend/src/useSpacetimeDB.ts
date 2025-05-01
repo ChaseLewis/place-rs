@@ -88,7 +88,7 @@ export const useSpacetimeDB = (props: { url: string }) => {
         } 
         else 
         {
-            const intervalHandler = setInterval(connectHandler,5000);
+            const intervalHandler = setInterval(connectHandler,1000);
             return () => { clearInterval(intervalHandler); }
         }
 
