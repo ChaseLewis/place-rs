@@ -398,12 +398,12 @@ export const PlaceImage = (props: {
                     }}
                 />
                 <FavoriteColorBar hide={loading || placeStore.isMobile}/>
-                <PixelOverlay  
+                {/* <PixelOverlay  
                     canvasRef={canvasRef as React.RefObject<HTMLCanvasElement>}
                     pixelPosition={mouseInfoRef.current?.canvasPosition() || [0, 0]}
                     hide={loading}
                     pixelScale={pixelScale}
-                />
+                /> */}
                 <canvas
                     ref={canvasRef} 
                     className="place-image" 

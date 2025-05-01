@@ -198,6 +198,9 @@ export const PixelOverlay: React.FC<PixelOverlayProps> = ({
     placeStore.clickMode
   ]);
 
+  if(hide) {
+    return null;
+  }
   // Remove the second effect since we've included its logic in the main effect
 
   return <div ref={overlayRef} className="pixel-overlay" />;
